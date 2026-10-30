@@ -61,7 +61,9 @@ func TestRootStaysInParent(t *testing.T) {
 	parent, outside := filepath.Join(tmp, "parent"), filepath.Join(tmp, "outside")
 	os.MkdirAll(filepath.Join(parent, "repo"), 0o755)
 	os.MkdirAll(outside, 0o755)
-	os.Symlink(outside, filepath.Join(parent, "escape"))
+	if err := os.Symlink(outside, filepath.Join(parent, "escape")); err != nil {
+		t.Logf("no symlink support (%v); skipping that case", err) // Windows without developer mode
+	}
 	s := &server{base: filepath.Join(parent, "repo"), parent: parent}
 	get := func(root string) (string, error) {
 		return s.root(httptest.NewRequest("GET", "/api/repos?"+url.Values{"root": {root}}.Encode(), nil))

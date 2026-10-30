@@ -102,7 +102,7 @@ export default function App() {
   const [cfg] = createResource(() => json('config'))
   const [root, setRoot] = createSignal(new URLSearchParams(location.search).get('root') || '')
   const [picker, setPicker] = createSignal(false)
-  const rootName = () => (root() || cfg()?.base || '').split('/').pop()
+  const rootName = () => (root() || cfg()?.base || '').split(/[\\/]/).pop() // filesystem path: \ on Windows
   createEffect(() => (document.title = rootName() ? `${rootName()} · webdiffviewer` : 'webdiffviewer'))
   const onKey = (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && cfg()?.parent) {
@@ -231,7 +231,7 @@ export default function App() {
                 <For each={r.worktrees}>
                   {(w) => (
                     <button class={row({ selected: repo() === w.path, indent: true })} title={w.path} onClick={() => pickRepo(w.path)}>
-                      <span class={name}>⑂ {w.path.split('/').pop()}</span>
+                      <span class={name}>⑂ {w.path.split(/[\\/]/).pop()}</span>
                       <span class={muted}>⎇ {w.branch || w.head}</span>
                     </button>
                   )}

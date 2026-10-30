@@ -146,6 +146,7 @@ func discover(base string) []string {
 	seen := map[string]bool{}
 	var paths []string
 	add := func(p string) {
+		p = filepath.Clean(p) // git prints C:/x on Windows; filepath uses C:\x
 		if !seen[p] {
 			seen[p] = true
 			paths = append(paths, p)
@@ -228,6 +229,7 @@ func (s *server) repos(w http.ResponseWriter, r *http.Request) {
 		}
 		out, _ := git(p, "worktree", "list", "--porcelain")
 		for _, wt := range parseWorktrees(string(out)) {
+			wt.Path = filepath.Clean(wt.Path) // same slash normalization as discover
 			// submodules list their gitdir (.git/modules/x) as main worktree; keep only real checkouts
 			if _, err := os.Stat(filepath.Join(wt.Path, ".git")); wt.Path == p || err != nil {
 				continue
@@ -417,7 +419,7 @@ func (s *server) diff(w http.ResponseWriter, r *http.Request, repo string) {
 	untracked := q.Get("untracked") == "1"
 	switch base := q.Get("base"); {
 	case untracked: // checked first: untracked files have no history, even in a branch comparison
-		args = append(args, "--no-index", "--", os.DevNull, path)
+		args = append(args, "--no-index", "--", "/dev/null", path) // git special-cases /dev/null on every OS (os.DevNull is NUL on Windows)
 	case base != "":
 		mb, err := mergeBase(repo, base)
 		if err != nil {
