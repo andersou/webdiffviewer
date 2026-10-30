@@ -17,12 +17,10 @@ export const THEMES = {
 const wrap = css({ flex: 1, minH: 0, display: 'flex', position: 'relative' })
 const pane = css({ flex: 1, minW: 0, display: 'flex', position: 'relative' })
 const scroller = css({ flex: 1, overflow: 'auto' })
-// floats over the text's top-right corner, clear of the scrollbar, in the theme's own colors
-const themeBtn = css({
-  position: 'absolute',
-  top: '10px',
-  right: '22px',
-  zIndex: 2,
+// theme and TOC buttons float over the text's top-right corner, clear of the scrollbar, in the
+// theme's own colors; above the phone TOC overlay, so it can be closed again
+const tools = css({ position: 'absolute', top: '10px', right: '22px', zIndex: 6, display: 'flex', flexDirection: 'column', gap: '6px' })
+const toolBtn = css({
   display: 'grid',
   placeItems: 'center',
   w: '30px',
@@ -31,6 +29,7 @@ const themeBtn = css({
   borderRadius: '6px',
   opacity: 0.75,
   _hover: { opacity: 1 },
+  '&[aria-pressed=true]': { opacity: 1, bg: 'ui.accent', color: '#fff', borderColor: 'ui.accent' },
   '& svg': { w: '16px', h: '16px' },
 })
 const ORDER = Object.keys(THEMES)
@@ -61,7 +60,7 @@ const tocPanel = css({
   bg: 'ui.panel',
   borderLeft: '1px solid token(colors.ui.border)',
   py: '8px',
-  mdDown: { position: 'absolute', top: 0, right: 0, bottom: 0, w: '80%', zIndex: 5, boxShadow: '-8px 0 24px rgba(0, 0, 0, 0.5)' },
+  mdDown: { position: 'absolute', top: 0, right: 0, bottom: 0, w: '80%', zIndex: 5, pt: '84px', boxShadow: '-8px 0 24px rgba(0, 0, 0, 0.5)' },
 })
 const tocItem = cva({
   base: { display: 'block', w: '100%', py: '3px', pr: '10px', textAlign: 'left', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', _hover: { bg: 'ui.hover' }, mdDown: { py: '7px', fontSize: '14px' } },
@@ -69,12 +68,13 @@ const tocItem = cva({
 })
 
 // MarkdownPreview renders a repo markdown file (at props.rev) with diagrams, repo-relative links
-// and images, and an optional TOC panel with scrollspy. Headings are reported via onHeadings.
+// and images, and an optional TOC panel with scrollspy. The theme and TOC buttons float over the text.
 export default function MarkdownPreview(props) {
   createEffect(() => {
     const t = props.theme // read before the await, so the effect re-runs when the theme changes
     import('../lib/markdown/themes.js').then((m) => m.applyTheme(t))
   })
+  const btnColors = () => ({ background: THEMES[props.theme].bg, color: THEMES[props.theme].fg, 'border-color': THEMES[props.theme].border })
   const next = () => ORDER[(ORDER.indexOf(props.theme) + 1) % ORDER.length]
 
   // theme is in the key so diagrams re-render in matching colors
@@ -148,7 +148,6 @@ export default function MarkdownPreview(props) {
     }
     const list = [...mdEl.querySelectorAll('h1[id], h2[id], h3[id], h4[id]')].map((h) => ({ id: h.id, text: h.textContent, level: +h.tagName[1] }))
     setHeadings(list)
-    props.onHeadings?.(list)
     spy()
     renderDiagrams(mdEl, r.dark)
   })
@@ -160,15 +159,32 @@ export default function MarkdownPreview(props) {
           <div class={scroller} ref={scrollEl} style={{ background: THEMES[props.theme].bg }} onScroll={spy}>
             <article class="markdown-body" ref={mdEl} />
           </div>
-          <button
-            class={themeBtn}
-            style={{ background: THEMES[props.theme].bg, color: THEMES[props.theme].fg, 'border-color': THEMES[props.theme].border }}
-            title={`Theme: ${THEMES[props.theme].label} (click for ${THEMES[next()].label})`}
-            aria-label={`Preview theme: ${THEMES[props.theme].label}. Switch to ${THEMES[next()].label}`}
-            onClick={() => props.onTheme(next())}
-          >
-            {ICONS[props.theme]()}
-          </button>
+          <div class={tools}>
+            <button
+              class={toolBtn}
+              style={btnColors()}
+              title={`Theme: ${THEMES[props.theme].label} (click for ${THEMES[next()].label})`}
+              aria-label={`Preview theme: ${THEMES[props.theme].label}. Switch to ${THEMES[next()].label}`}
+              onClick={() => props.onTheme(next())}
+            >
+              {ICONS[props.theme]()}
+            </button>
+            <Show when={headings().length}>
+              <button
+                class={toolBtn}
+                style={props.showToc ? undefined : btnColors()}
+                aria-pressed={props.showToc}
+                aria-controls="md-toc"
+                title="Table of contents"
+                aria-label="Table of contents"
+                onClick={props.onToggleToc}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" />
+                </svg>
+              </button>
+            </Show>
+          </div>
         </div>
         <Show when={props.showToc && headings().length}>
           <nav id="md-toc" class={tocPanel} aria-label="Table of contents">

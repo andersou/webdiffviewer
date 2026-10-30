@@ -1,4 +1,4 @@
-import { createResource, createSignal, For, Show } from 'solid-js'
+import { createResource, For, Show } from 'solid-js'
 import { css, cva } from 'styled-system/css'
 import { text } from '../lib/api/client.js'
 import MarkdownPreview, { THEMES } from './MarkdownPreview.jsx'
@@ -42,8 +42,6 @@ export default function Viewer(props) {
   const [storedTheme, setTheme] = createStoredSignal('mdTheme', 'github-light')
   const theme = () => (THEMES[storedTheme()] ? storedTheme() : 'github-light') // ignore unknown saved values
   const [showToc, setShowToc] = createStoredSignal('mdToc', false)
-  const toggleToc = () => setShowToc((on) => !on)
-  const [headingCount, setHeadingCount] = createSignal(0)
 
   // a refresh (window focus) that fetches the same text returns the same rows, so nothing re-renders
   let last
@@ -87,13 +85,6 @@ export default function Viewer(props) {
             </For>
           </span>
         </Show>
-        <Show when={preview() && headingCount()}>
-          <span class={seg}>
-            <button class={segBtn({ active: showToc() })} aria-pressed={showToc()} aria-controls="md-toc" title="Table of contents" onClick={toggleToc}>
-              TOC
-            </button>
-          </span>
-        </Show>
         <span>{props.sel.path}</span>
         <Show when={props.sel.orig}>
           <span class={muted}> ← {props.sel.orig}</span>
@@ -111,8 +102,8 @@ export default function Viewer(props) {
             theme={theme()}
             onTheme={setTheme}
             showToc={showToc()}
+            onToggleToc={() => setShowToc((on) => !on)}
             onCloseToc={() => setShowToc(false)}
-            onHeadings={(list) => setHeadingCount(list.length)}
             onOpen={props.onOpen}
           />
         }
