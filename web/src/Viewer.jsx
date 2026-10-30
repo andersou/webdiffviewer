@@ -1,4 +1,4 @@
-import { createEffect, createResource, createSignal, For, onCleanup, Show } from 'solid-js'
+import { createEffect, createMemo, createResource, createSignal, For, onCleanup, Show } from 'solid-js'
 import { css, cva } from '../styled-system/css'
 import { text } from './api'
 import { highlight } from './highlight'
@@ -101,6 +101,8 @@ const chunks = (rows) => {
 }
 
 function Rows(props) {
+  // whole-file rows have one number column; only diffs need the old-line column
+  const diff = createMemo(() => props.rows.some((r) => r.o != null || r.t !== 'ctx'))
   return (
     <div class={code}>
       <For each={chunks(props.rows)}>
@@ -109,7 +111,9 @@ function Rows(props) {
             <For each={chunk}>
               {(r) => (
                 <div class={LINE[r.t]}>
-                  <span class={ln}>{r.o}</span>
+                  <Show when={diff()}>
+                    <span class={ln}>{r.o}</span>
+                  </Show>
                   <span class={ln}>{r.n}</span>
                   {r.html != null ? <span class={txt} innerHTML={r.html} /> : <span class={txt}>{r.text}</span>}
                 </div>
