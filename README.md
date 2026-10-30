@@ -37,7 +37,7 @@ Run `webdiffviewer` in any folder and open your browser. It finds the repository
 - **Explorer:** the tree of tracked and untracked files, with each file's status.
 - **Commits:** history with a branch/merge graph and branch/tag badges, for the current branch or **All branches**, 300 commits at a time. Merges are diffed against their first parent. Details are cached and prefetched on hover, so a commit opens almost instantly.
 - **Base:** diff against another branch from the merge-base, like a pull request. The **Working tree** switch adds uncommitted and untracked changes; a **•** marks files with local edits. Turn it off to see only the branch's commits.
-- **Views:** **Diff | File | Preview** in the top bar. *File* shows the whole file at the right version: the index for staged changes, `HEAD` for a branch comparison without the working tree, the commit in the Commits tab, otherwise the file on disk. Line-number columns that no row uses are hidden.
+- **Views:** **Diff | File | Preview** in the top bar (Preview for markdown and HTML). *File* shows the whole file at the right version: the index for staged changes, `HEAD` for a branch comparison without the working tree, the commit in the Commits tab, otherwise the file on disk. Line-number columns that no row uses are hidden.
 - **Syntax highlighting:** [Shiki](https://shiki.style), with VS Code's own TextMate grammars (240+ languages, including Vue, Angular templates, Svelte, Astro and MDX) and the Tokyo Night theme, for files and diffs up to 512KB. Each grammar loads only when a file needs it.
 - **Icons:** [Material Icon Theme](https://github.com/material-extensions/vscode-material-icon-theme) (MIT) icons for files and folders, resolved the way VS Code does. The browser downloads only the icons on screen.
 - **Markdown preview:** markdown-it with the same plugins as MPE:
@@ -47,6 +47,7 @@ Run `webdiffviewer` in any folder and open your browser. It finds the repository
   - GitHub Light (default), Dark and Dark Dimmed themes;
   - relative images load from the repo, and relative links open inside the viewer;
   - a **TOC** panel next to the preview (an overlay on phones) that highlights the visible section.
+- **HTML preview:** `.html` files render in a sandboxed frame, with the repo's relative images and stylesheets. Scripts and forms are off, and the page can't reach the app or its API.
 - **Other repositories (`-parent-dir`):** the 📁 button and **Ctrl/⌘+K** open the fuzzy picker.
 - **Links:** the URL holds the folder, repo, tab, base, open commit, open file and view, so a reload or a shared link opens the same screen, and Back/Forward move between files. For example, `/?base=main&diff=web/src/App.jsx` or `/?tab=files&file=README.md`. The repo (`repo=`) is a path relative to the open folder, and `root=` is the `-parent-dir` folder. Themes, TOC and All branches stay as personal preferences.
 - **Responsive:** up to 768px wide, the UI shows one pane at a time.
@@ -105,7 +106,7 @@ webdiffviewer -host 0.0.0.0                  # reachable on the network (see Sec
 - Gitignored files (like `.env`) can be opened by default. Use `-check-ignore` to hide them, especially with `-host 0.0.0.0`.
 - Git output is capped (files 5MB, diffs 10MB), so a huge file in history can't exhaust memory.
 - Only hex commit ids are accepted, so refs and options can't be injected into git commands.
-- Markdown HTML is sanitized with DOMPurify. Raw files (`/api/raw`) are served with `Content-Security-Policy: sandbox`.
+- Markdown HTML is sanitized with DOMPurify. HTML previews run in a sandboxed iframe without scripts. Raw files (`/api/raw`) are served with `Content-Security-Policy: sandbox`.
 - Branch switching requires a JSON body, so another website open in the browser can't trigger it.
 
 ## Development

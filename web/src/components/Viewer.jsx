@@ -7,7 +7,8 @@ import { createStoredSignal } from '../hooks/createStoredSignal.js'
 import CodeView from './CodeView.jsx'
 import { parseDiff } from '../lib/git/diff.js'
 import { highlight } from '../lib/highlight/highlight.js'
-import { viewOf, views } from '../lib/utils/url.js'
+import { isHtml, viewOf, views } from '../lib/utils/url.js'
+import HtmlPreview from './HtmlPreview.jsx'
 
 const head = css({
   px: '14px',
@@ -34,7 +35,7 @@ const rev = (s) => (s.kind !== 'diff' ? '' : s.commit || (s.staged ? ':' : s.bas
 const where = (s) =>
   s.kind === 'file' ? '' : s.commit ? ` (commit ${s.commit.slice(0, 7)})` : s.base ? ` (vs ${s.base})` : s.staged ? ' (staged)' : s.untracked ? ' (untracked)' : ' (working tree)'
 
-// Viewer shows the selected file or change as Diff, File or (markdown) Preview.
+// Viewer shows the selected file or change as Diff, File or (markdown/HTML) Preview.
 export default function Viewer(props) {
   const view = () => viewOf(props.sel, props.pref)
   const preview = () => !!props.sel && view() === 'preview'
@@ -94,18 +95,23 @@ export default function Viewer(props) {
       <Show
         when={!preview()}
         fallback={
-          <MarkdownPreview
-            repo={props.repo}
-            path={props.sel.path}
-            rev={rev(props.sel)}
-            tick={props.tick}
-            theme={theme()}
-            onTheme={setTheme}
-            showToc={showToc()}
-            onToggleToc={() => setShowToc((on) => !on)}
-            onCloseToc={() => setShowToc(false)}
-            onOpen={props.onOpen}
-          />
+          <Show
+            when={!isHtml(props.sel.path)}
+            fallback={<HtmlPreview repo={props.repo} path={props.sel.path} rev={rev(props.sel)} tick={props.tick} />}
+          >
+            <MarkdownPreview
+              repo={props.repo}
+              path={props.sel.path}
+              rev={rev(props.sel)}
+              tick={props.tick}
+              theme={theme()}
+              onTheme={setTheme}
+              showToc={showToc()}
+              onToggleToc={() => setShowToc((on) => !on)}
+              onCloseToc={() => setShowToc(false)}
+              onOpen={props.onOpen}
+            />
+          </Show>
         }
       >
         <Show when={!data.error} fallback={<div class={errorBox}>{data.error?.message}</div>}>
