@@ -1,16 +1,12 @@
-package main
+package git
 
 import (
-	"net/http/httptest"
-	"net/url"
-	"os"
-	"path/filepath"
 	"reflect"
 	"testing"
 )
 
 func TestParseStatus(t *testing.T) {
-	got := parseStatus("M  a.go\x00R  new.go\x00old.go\x00?? dir/x.txt\x00")
+	got := ParseStatus("M  a.go\x00R  new.go\x00old.go\x00?? dir/x.txt\x00")
 	want := []Change{
 		{X: "M", Y: " ", Path: "a.go"},
 		{X: "R", Y: " ", Path: "new.go", Orig: "old.go"},
@@ -23,7 +19,7 @@ func TestParseStatus(t *testing.T) {
 
 func TestParseWorktrees(t *testing.T) {
 	out := "worktree /r\nHEAD 0123456789\nbranch refs/heads/main\n\nworktree /w\nHEAD abcdef0123\ndetached\n\nworktree /gone\nHEAD 1111111111\nprunable gitdir file points to non-existent location\n"
-	got := parseWorktrees(out)
+	got := ParseWorktrees(out)
 	want := []Worktree{{Path: "/r", Branch: "main", Head: "0123456"}, {Path: "/w", Head: "abcdef0"}}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %+v", got)
@@ -31,7 +27,7 @@ func TestParseWorktrees(t *testing.T) {
 }
 
 func TestParseNameStatus(t *testing.T) {
-	got := parseNameStatus("M\x00a.go\x00R087\x00old.go\x00new.go\x00D\x00x\x00")
+	got := ParseNameStatus("M\x00a.go\x00R087\x00old.go\x00new.go\x00D\x00x\x00")
 	want := []Change{
 		{X: "M", Y: " ", Path: "a.go"},
 		{X: "R", Y: " ", Path: "new.go", Orig: "old.go"},
@@ -51,41 +47,15 @@ func TestWithWorktree(t *testing.T) {
 		{X: "A", Y: " ", Path: "staged.txt", Dirty: true},
 		{X: "?", Y: "?", Path: "novo.txt", Dirty: true},
 	}
-	if got := withWorktree(diff, status); !reflect.DeepEqual(got, want) {
+	if got := WithWorktree(diff, status); !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %+v", got)
-	}
-}
-
-func TestRootStaysInParent(t *testing.T) {
-	tmp, _ := filepath.EvalSymlinks(t.TempDir())
-	parent, outside := filepath.Join(tmp, "parent"), filepath.Join(tmp, "outside")
-	os.MkdirAll(filepath.Join(parent, "repo"), 0o755)
-	os.MkdirAll(outside, 0o755)
-	if err := os.Symlink(outside, filepath.Join(parent, "escape")); err != nil {
-		t.Logf("no symlink support (%v); skipping that case", err) // Windows without developer mode
-	}
-	s := &server{base: filepath.Join(parent, "repo"), parent: parent}
-	get := func(root string) (string, error) {
-		return s.root(httptest.NewRequest("GET", "/api/repos?"+url.Values{"root": {root}}.Encode(), nil))
-	}
-	if got, err := get(filepath.Join(parent, "repo")); err != nil || got != filepath.Join(parent, "repo") {
-		t.Fatalf("inside parent: %q %v", got, err)
-	}
-	for _, bad := range []string{outside, filepath.Join(parent, "escape"), filepath.Join(parent, "..", "outside"), "/etc"} {
-		if _, err := get(bad); err == nil {
-			t.Fatalf("%s should be rejected", bad)
-		}
-	}
-	s.parent = ""
-	if _, err := get(filepath.Join(tmp, "parent")); err == nil {
-		t.Fatal("picker disabled: other roots must be rejected")
 	}
 }
 
 func TestParseLog(t *testing.T) {
 	out := "aaa\x00bbb ccc\x00Ana\x00ana@x\x001700000000\x00HEAD -> main, tag: v1.0.0\x00merge: a, b | c\x00body\nline 2\n\x1e\n" +
 		"bbb\x00\x00Bo\x00bo@x\x001600000000\x00\x00root\x00\x1e\n"
-	got := parseLog(out)
+	got := ParseLog(out)
 	want := []Commit{
 		{Hash: "aaa", Parents: []string{"bbb", "ccc"}, Author: "Ana", Email: "ana@x", Time: 1700000000, Refs: []string{"HEAD -> main", "tag: v1.0.0"}, Subject: "merge: a, b | c", Body: "body\nline 2"},
 		{Hash: "bbb", Parents: []string{}, Author: "Bo", Email: "bo@x", Time: 1600000000, Refs: []string{}, Subject: "root"},
@@ -97,12 +67,12 @@ func TestParseLog(t *testing.T) {
 
 func TestIsHash(t *testing.T) {
 	for _, ok := range []string{"abcd", "0123456789abcdef0123456789abcdef01234567"} {
-		if !isHash(ok) {
+		if !IsHash(ok) {
 			t.Errorf("%q should be a hash", ok)
 		}
 	}
 	for _, bad := range []string{"", "abc", "HEAD", "--output=x", "main", "ABCD", "abcd^1"} {
-		if isHash(bad) {
+		if IsHash(bad) {
 			t.Errorf("%q should be rejected", bad)
 		}
 	}
@@ -111,7 +81,7 @@ func TestIsHash(t *testing.T) {
 func TestParseShow(t *testing.T) {
 	// real git show -z output: the header ends with RS, NUL, newline
 	out := "abc\x00def\x00Ana\x00a@x\x001700000000\x00\x00subject\x00body\n\x1e\x00\nM\x00a.go\x00R090\x00old.go\x00new.go\x00"
-	c, files, ok := parseShow(out)
+	c, files, ok := ParseShow(out)
 	if !ok || c.Hash != "abc" || c.Subject != "subject" || c.Body != "body" {
 		t.Fatalf("commit %+v ok=%v", c, ok)
 	}
@@ -119,13 +89,13 @@ func TestParseShow(t *testing.T) {
 	if !reflect.DeepEqual(files, want) {
 		t.Fatalf("files %+v", files)
 	}
-	if _, files, _ := parseShow("abc\x00\x00A\x00a@x\x001\x00\x00empty\x00\x1e\x00\n"); len(files) != 0 {
+	if _, files, _ := ParseShow("abc\x00\x00A\x00a@x\x001\x00\x00empty\x00\x1e\x00\n"); len(files) != 0 {
 		t.Fatalf("no files expected, got %+v", files)
 	}
 }
 
 func TestParseNameStatusIgnoresStraySeparators(t *testing.T) {
-	got := parseNameStatus("\x00\x00M\x00a.go\x00\x00D\x00b.go\x00")
+	got := ParseNameStatus("\x00\x00M\x00a.go\x00\x00D\x00b.go\x00")
 	want := []Change{{X: "M", Y: " ", Path: "a.go"}, {X: "D", Y: " ", Path: "b.go"}}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %+v", got)

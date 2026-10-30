@@ -1,0 +1,134 @@
+import { createEffect, createResource, createSignal, For, Show } from 'solid-js'
+import { css, cva } from 'styled-system/css'
+import { text } from '../lib/api'
+import MarkdownPreview, { THEMES } from '../markdown/MarkdownPreview'
+import { empty, errorBox, muted } from '../styles/ui'
+import CodeView from './CodeView'
+import { parseDiff } from './diff'
+import { highlight } from './highlight'
+import 'highlight.js/styles/tokyo-night-dark.css'
+
+const head = css({
+  px: '14px',
+  py: '8px',
+  borderBottom: '1px solid token(colors.ui.border)',
+  bg: 'ui.panel',
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  mdDown: { position: 'sticky', top: 0 },
+})
+const back = css({ display: 'none', pr: '10px', fontSize: '16px', mdDown: { display: 'inline' } })
+const seg = css({ float: 'right', ml: '10px', display: 'inline-flex', border: '1px solid token(colors.ui.borderStrong)', borderRadius: '3px', overflow: 'hidden' })
+const segBtn = cva({
+  base: { px: '10px', py: '1px', _hover: { bg: '#333' }, '&:not(:first-child)': { borderLeft: '1px solid token(colors.ui.borderStrong)' } },
+  variants: { active: { true: { bg: 'ui.accent', color: '#fff', _hover: { bg: 'ui.accent' } } } },
+})
+const themeSel = css({ float: 'right', ml: '10px', px: '4px', py: '1px', bg: 'ui.input', color: 'ui.fg', border: '1px solid token(colors.ui.borderStrong)', borderRadius: '3px' })
+const LABELS = { diff: 'Diff', file: 'File', preview: 'Preview' }
+
+// version shown by File/Preview: the commit itself in the Commits tab, the index for staged
+// changes, HEAD for a branch comparison without the working tree, otherwise the file on disk
+const rev = (s) => (s.kind !== 'diff' ? '' : s.commit || (s.staged ? ':' : s.base && !s.wt ? 'HEAD' : ''))
+
+const where = (s) =>
+  s.kind === 'file' ? '' : s.commit ? ` (commit ${s.commit.slice(0, 7)})` : s.base ? ` (vs ${s.base})` : s.staged ? ' (staged)' : s.untracked ? ' (untracked)' : ' (working tree)'
+
+// Viewer shows the selected file or change as Diff, File or (markdown) Preview.
+export default function Viewer(props) {
+  const isMd = () => /\.(md|markdown|mdx)$/i.test(props.sel?.path || '')
+  // what a selection can show: changes also offer the whole file; markdown adds a rendered preview
+  const views = () => [...(props.sel?.kind === 'diff' ? ['diff'] : []), 'file', ...(isMd() ? ['preview'] : [])]
+  // last choice per kind; markdown opens as preview from the Explorer and as diff from Changes
+  const [pref, setPref] = createSignal({ file: 'preview', diff: 'diff' })
+  const view = () => {
+    const v = views()
+    const p = pref()[props.sel?.kind]
+    return v.includes(p) ? p : v[0]
+  }
+  const preview = () => !!props.sel && view() === 'preview'
+
+  const stored = localStorage.getItem('mdTheme')
+  const [theme, setTheme] = createSignal(THEMES[stored] ? stored : 'github-light')
+  createEffect(() => localStorage.setItem('mdTheme', theme()))
+  const [showToc, setShowToc] = createSignal(localStorage.getItem('mdToc') === '1')
+  const toggleToc = () => {
+    localStorage.setItem('mdToc', showToc() ? '0' : '1')
+    setShowToc(!showToc())
+  }
+  const [headingCount, setHeadingCount] = createSignal(0)
+
+  const [data] = createResource(
+    () => props.sel && !preview() && [props.repo, props.sel, props.tick, view()],
+    async ([repo, s, , v]) => {
+      if (v === 'file') {
+        const src = await text('file', { repo, path: s.path, rev: rev(s) })
+        const rows = src.split('\n').map((t, i) => ({ t: 'ctx', n: i + 1, text: t }))
+        await highlight(s.path, rows)
+        return rows
+      }
+      const src = await text('diff', { repo, path: s.path, orig: s.orig || '', base: s.base || '', commit: s.commit || '', wt: s.wt ? 1 : 0, staged: s.staged ? 1 : 0, untracked: s.untracked ? 1 : 0 })
+      const rows = parseDiff(src)
+      // highlight each side as continuous code; context lines end up with the new side's tokens
+      await highlight(s.path, rows.filter((r) => r.t === 'del' || r.t === 'ctx'))
+      await highlight(s.path, rows.filter((r) => r.t === 'add' || r.t === 'ctx'))
+      return rows.length ? rows : [{ t: 'hunk', text: src.trim() || 'No changes' }] // binary/mode-only diffs
+    },
+  )
+
+  return (
+    <Show when={props.sel} fallback={<div class={empty}>Select a file or a change</div>}>
+      <div class={head}>
+        <button class={back} onClick={props.onBack} aria-label="Back to list">←</button>
+        <Show when={views().length > 1}>
+          <span class={seg} role="group" aria-label="View">
+            <For each={views()}>
+              {(v) => (
+                <button class={segBtn({ active: view() === v })} aria-pressed={view() === v} onClick={() => setPref((p) => ({ ...p, [props.sel.kind]: v }))}>
+                  {LABELS[v]}
+                </button>
+              )}
+            </For>
+          </span>
+        </Show>
+        <Show when={preview()}>
+          <select class={themeSel} aria-label="Preview theme" value={theme()} onChange={(e) => setTheme(e.target.value)}>
+            <For each={Object.entries(THEMES)}>{([k, t]) => <option value={k}>{t.label}</option>}</For>
+          </select>
+        </Show>
+        <Show when={preview() && headingCount()}>
+          <span class={seg}>
+            <button class={segBtn({ active: showToc() })} aria-pressed={showToc()} aria-controls="md-toc" title="Table of contents" onClick={toggleToc}>
+              TOC
+            </button>
+          </span>
+        </Show>
+        <span>{props.sel.path}</span>
+        <Show when={props.sel.orig}>
+          <span class={muted}> ← {props.sel.orig}</span>
+        </Show>
+        <span class={muted}>{where(props.sel)}</span>
+      </div>
+      <Show
+        when={!preview()}
+        fallback={
+          <MarkdownPreview
+            repo={props.repo}
+            path={props.sel.path}
+            rev={rev(props.sel)}
+            tick={props.tick}
+            theme={theme()}
+            showToc={showToc()}
+            onCloseToc={() => setShowToc(false)}
+            onHeadings={(list) => setHeadingCount(list.length)}
+            onOpen={props.onOpen}
+          />
+        }
+      >
+        <Show when={!data.error} fallback={<div class={errorBox}>{data.error?.message}</div>}>
+          <Show when={data.latest}>{(rows) => <CodeView rows={rows()} />}</Show>
+        </Show>
+      </Show>
+    </Show>
+  )
+}

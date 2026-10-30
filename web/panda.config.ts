@@ -6,6 +6,7 @@ export default defineConfig({
   include: ['./src/**/*.{js,jsx}'],
   exclude: ['./src/**/*.test.js'],
   outdir: 'styled-system',
+  importMap: 'styled-system', // matches the Vite alias, so extraction finds css()/cva() in every folder
   outExtension: 'js',
   jsxFramework: 'solid',
   theme: {

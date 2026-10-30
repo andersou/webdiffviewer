@@ -124,10 +124,19 @@ Pushing to `develop` publishes `-beta` pre-releases.
 
 ### Layout
 
-- `main.go`: flags, routes, `Host` check and static file caching.
-- `api.go`: handlers that call `git` (status, diff, log, branches, worktrees, files).
-- `web/src`: Solid components (`App`, `Tree`, `Viewer`, `Commits`, `Picker`).
-- `web/src/graph.js`: commit graph layout. `web/src/mdEngine.js`: the markdown engine.
-- Styles: Panda CSS (`web/panda.config.ts` and `web/src/ui.js`). `web/src/markdown.css` adjusts the HTML generated from markdown.
-- Icons: `npm install` copies the SVGs to `web/public/icons` (`web/scripts/copy-icons.js`), and `web/src/iconRules.js` picks the icon for each name.
-- Screenshots in `docs/screenshots` come from a made-up demo repository.
+```
+main.go                  flags, embedded frontend, server startup
+internal/git/            runs git and parses its output (status, diff, log, worktrees); no HTTP
+internal/server/         HTTP API: routes and middleware, repos/branches, changes/files, commits
+web/src/
+  app/                   App: sidebar, repo/branch/base controls, tabs
+  tree/                  file tree and Material Icon Theme lookup
+  viewer/                Viewer (Diff | File | Preview), CodeView, diff parser, syntax highlighting
+  markdown/              markdown engine (markdown-it plugins), preview + TOC, themes, admonitions, frontmatter
+  commits/               Commits tab and the graph layout
+  picker/                repository picker (-parent-dir)
+  lib/                   API client and pure helpers (fuzzy search, link resolution)
+  styles/                shared Panda CSS styles
+```
+
+Tests sit next to the code they cover (`*_test.go`, `*.test.js`). Styles use Panda CSS (`web/panda.config.ts`); `web/src/markdown/markdown.css` adjusts the HTML generated from markdown. `npm install` copies the icon SVGs to `web/public/icons` (`web/scripts/copy-icons.js`). Screenshots in `docs/screenshots` come from a made-up demo repository.

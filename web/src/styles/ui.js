@@ -1,5 +1,5 @@
 // Styles shared by several components (Panda extracts them at build time).
-import { css, cva } from '../styled-system/css'
+import { css, cva } from 'styled-system/css'
 
 export const row = cva({
   base: {
@@ -24,6 +24,7 @@ export const name = css({ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis',
 export const muted = css({ color: 'ui.muted', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis' })
 export const error = css({ color: 'ui.error', px: '10px', py: '6px', whiteSpace: 'pre-wrap' })
 export const empty = css({ m: 'auto', color: '#777', p: '20px', whiteSpace: 'pre-wrap' })
+export const errorBox = css({ m: 'auto', p: '20px', color: 'ui.error', whiteSpace: 'pre-wrap' })
 export const heading = css({
   m: 0,
   px: '10px',

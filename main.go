@@ -1,3 +1,4 @@
+// Command webdiffviewer serves a VS Code-style git UI for the repos in a folder.
 package main
 
 import (
@@ -11,7 +12,8 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
+
+	"github.com/andersou/webdiffviewer/internal/server"
 )
 
 //go:embed all:web/dist
@@ -50,41 +52,10 @@ func main() {
 		}
 	}
 
-	s := &server{base: base, parent: parent, allowed: map[string]bool{}}
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /api/config", s.config)
-	mux.HandleFunc("GET /api/folders", s.folders)
-	mux.HandleFunc("GET /api/repos", s.repos)
-	mux.HandleFunc("GET /api/branches", s.withRepo(s.branches))
-	mux.HandleFunc("POST /api/checkout", s.withRepo(s.checkout))
-	mux.HandleFunc("GET /api/files", s.withRepo(s.files))
-	mux.HandleFunc("GET /api/status", s.withRepo(s.status))
-	mux.HandleFunc("GET /api/diff", s.withRepo(s.diff))
-	mux.HandleFunc("GET /api/file", s.withRepo(s.file))
-	mux.HandleFunc("GET /api/raw", s.withRepo(s.raw))
-	mux.HandleFunc("GET /api/log", s.withRepo(s.log))
-	mux.HandleFunc("GET /api/commit", s.withRepo(s.commit))
 	web, _ := fs.Sub(dist, "web/dist")
-	mux.Handle("/", cacheStatic(http.FileServerFS(web)))
-
 	addr := net.JoinHostPort(*host, strconv.Itoa(*port))
 	log.Printf("webdiffviewer: %s -> http://%s", base, addr)
-	log.Fatal(http.ListenAndServe(addr, hostGuard(*host, mux)))
-}
-
-// cacheStatic lets browsers keep built assets: /assets/ names are content-hashed (never change),
-// /icons/ change only with a new release. embed.FS has no mod times, so without this every
-// visit would re-download them.
-func cacheStatic(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case strings.HasPrefix(r.URL.Path, "/assets/"):
-			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-		case strings.HasPrefix(r.URL.Path, "/icons/"):
-			w.Header().Set("Cache-Control", "public, max-age=86400")
-		}
-		h.ServeHTTP(w, r)
-	})
+	log.Fatal(http.ListenAndServe(addr, server.New(base, parent, web).Handler(*host)))
 }
 
 // realPath makes p absolute and resolves symlinks: git reports real paths (e.g. /private/var, not /var)
@@ -94,27 +65,4 @@ func realPath(p string) (string, error) {
 		return "", err
 	}
 	return filepath.EvalSymlinks(abs)
-}
-
-// hostGuard blocks DNS-rebinding when bound to loopback: only loopback Host headers are accepted.
-func hostGuard(bind string, h http.Handler) http.Handler {
-	if !isLoopback(bind) {
-		return h
-	}
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		hn, _, err := net.SplitHostPort(r.Host)
-		if err != nil {
-			hn = r.Host
-		}
-		if !isLoopback(hn) {
-			http.Error(w, "forbidden host", http.StatusForbidden)
-			return
-		}
-		h.ServeHTTP(w, r)
-	})
-}
-
-func isLoopback(h string) bool {
-	ip := net.ParseIP(h)
-	return h == "localhost" || ip != nil && ip.IsLoopback()
 }

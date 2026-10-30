@@ -1,9 +1,9 @@
 import { createMemo, createResource, createSignal, For, Show } from 'solid-js'
-import { css, cva } from '../styled-system/css'
-import { json } from './api'
+import { css, cva } from 'styled-system/css'
+import { json } from '../lib/api'
 import { graph } from './graph'
-import Tree from './Tree'
-import { error, muted, name } from './ui'
+import Tree from '../tree/Tree'
+import { error, muted, name } from '../styles/ui'
 
 // px; taller rows on phones for touch. Read once: the SVG is drawn at this exact height (no stretching).
 const ROW = matchMedia('(width < 48rem)').matches ? 34 : 26
@@ -98,7 +98,7 @@ export default function Commits(props) {
     const key = `${props.repo}\0${hash}`
     if (!cache.has(key)) {
       const p = json('commit', { repo: props.repo, hash })
-      p.then((d) => import('./icons').then(({ fileIcon, folderIcon }) => {
+      p.then((d) => import('../tree/icons').then(({ fileIcon, folderIcon }) => {
         const urls = new Set()
         for (const f of d.files) {
           urls.add(fileIcon(f.path))

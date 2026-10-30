@@ -1,7 +1,7 @@
 import { createMemo, createSignal, For, Show } from 'solid-js'
 import { createStore } from 'solid-js/store'
-import { css } from '../styled-system/css'
-import { badge, name, row } from './ui'
+import { css } from 'styled-system/css'
+import { badge, name, row } from '../styles/ui'
 
 const chev = css({ w: '10px', color: '#999' })
 const iconBox = css({ w: '16px', h: '16px', flex: 'none', '& img': { w: '16px', h: '16px' } })

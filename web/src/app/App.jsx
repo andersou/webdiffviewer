@@ -1,11 +1,11 @@
 import { createEffect, createMemo, createResource, createSignal, For, onCleanup, Show } from 'solid-js'
-import { css, cva } from '../styled-system/css'
-import { api, json } from './api'
-import Commits from './Commits'
-import Picker from './Picker'
-import Tree from './Tree'
-import { error, heading, muted, name, row, select } from './ui'
-import Viewer from './Viewer'
+import { css, cva } from 'styled-system/css'
+import { api, json } from '../lib/api'
+import Commits from '../commits/Commits'
+import Picker from '../picker/Picker'
+import Tree from '../tree/Tree'
+import { error, heading, muted, name, row, select } from '../styles/ui'
+import Viewer from '../viewer/Viewer'
 
 const letter = (c) => (c === '?' ? 'U' : c)
 
