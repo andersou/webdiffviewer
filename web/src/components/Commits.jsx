@@ -23,7 +23,7 @@ const refCls = cva({
     },
   },
 })
-const details = css({ borderTop: '1px solid token(colors.ui.border)', borderBottom: '1px solid token(colors.ui.border)', bg: 'ui.raised', pb: '6px' })
+const detailsBox = css({ borderTop: '1px solid token(colors.ui.border)', borderBottom: '1px solid token(colors.ui.border)', bg: 'ui.raised', pb: '6px' })
 const message = css({ px: '12px', py: '8px', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: '12px', lineHeight: '1.5' })
 const meta = css({ px: '12px', pb: '6px', fontSize: '11px', color: 'ui.muted', display: 'flex', flexWrap: 'wrap', gap: '4px 10px' })
 const moreBtn = css({ w: '100%', py: '8px', color: 'ui.link', _hover: { bg: 'ui.hover' } })
@@ -44,7 +44,7 @@ const refLabel = (r) => r.replace(/^HEAD -> /, '').replace(/^tag: /, '')
 // Commits lists history with a lane graph; opening a commit shows its message and changed files.
 export default function Commits(props) {
   const [all, setAll] = createStoredSignal('commitsAll', false)
-  const [openHash, setOpenHash] = createSignal()
+  const openHash = () => props.openHash
   const [extra, setExtra] = createSignal([]) // pages loaded with "Load more"
   const [loadingMore, setLoadingMore] = createSignal(false)
   const [done, setDone] = createSignal(false)
@@ -88,12 +88,42 @@ export default function Commits(props) {
     (detail.latest?.files || []).map((f) => ({ ...f, key: `c:${openHash()}:${f.path}`, kind: 'diff', commit: openHash(), status: f.x })),
   )
 
+  // details: message, author and changed files of commit c (subject, author and date come from the
+  // list row, so they show instantly)
+  const details = (c) => (
+    <div class={detailsBox}>
+      <div class={message}>
+        <strong>{c.subject}</strong>
+        <Show when={detail.latest?.commit.hash === c.hash && detail.latest.commit.body}>{'\n\n' + detail.latest.commit.body}</Show>
+      </div>
+      <div class={meta}>
+        <span>
+          {c.author}
+          <Show when={detail.latest?.commit.hash === c.hash}> &lt;{detail.latest.commit.email}&gt;</Show>
+        </span>
+        <span>{new Date(c.time * 1000).toLocaleString()}</span>
+        <span>{c.hash.slice(0, 10)}</span>
+        <Show when={c.parents.length > 1}>
+          <span>merge · changes vs first parent</span>
+        </Show>
+      </div>
+      <Show when={detail.latest?.commit.hash === c.hash} fallback={<div class={meta}>Loading files…</div>}>
+        <Tree items={fileItems()} defaultOpen selected={props.selected} onSelect={props.onSelect} badge={(f) => f.status} />
+      </Show>
+      <Show when={detail.error}>
+        <div class={error}>{detail.error.message}</div>
+      </Show>
+    </div>
+  )
+
   return (
     <>
       <label class={toolbar}>
         <input type="checkbox" checked={all()} onChange={(e) => setAll(e.target.checked)} />
         All branches
       </label>
+      {/* a linked commit outside the loaded pages (older, or on another branch) shows on top */}
+      <Show when={openHash() && first.latest && !commits().some((c) => c.hash === openHash()) && detail.latest?.commit}>{(c) => details(c())}</Show>
       <For each={commits()}>
         {(c, i) => (
           <>
@@ -105,7 +135,7 @@ export default function Commits(props) {
               onPointerEnter={() => (hoverTimer = setTimeout(() => load(c.hash), 120))}
               onPointerLeave={() => clearTimeout(hoverTimer)}
               onPointerDown={() => load(c.hash)}
-              onClick={() => setOpenHash(openHash() === c.hash ? undefined : c.hash)}
+              onClick={() => props.onOpenHash(openHash() === c.hash ? undefined : c.hash)}
             >
               <CommitGraph row={rows()[i()]} width={width()} merge={c.parents.length > 1} />
               <For each={c.refs.slice(0, 2)}>{(r) => <span class={refCls({ kind: refKind(r) })}>{refLabel(r)}</span>}</For>
@@ -115,32 +145,7 @@ export default function Commits(props) {
               <span class={name}>{c.subject}</span>
               <span class={muted} style={{ 'padding-left': '6px' }}>{ago(c.time)}</span>
             </button>
-            <Show when={openHash() === c.hash}>
-              <div class={details}>
-                {/* subject, author and date come from the list, so they show instantly */}
-                <div class={message}>
-                  <strong>{c.subject}</strong>
-                  <Show when={detail.latest?.commit.hash === c.hash && detail.latest.commit.body}>{'\n\n' + detail.latest.commit.body}</Show>
-                </div>
-                <div class={meta}>
-                  <span>
-                    {c.author}
-                    <Show when={detail.latest?.commit.hash === c.hash}> &lt;{detail.latest.commit.email}&gt;</Show>
-                  </span>
-                  <span>{new Date(c.time * 1000).toLocaleString()}</span>
-                  <span>{c.hash.slice(0, 10)}</span>
-                  <Show when={c.parents.length > 1}>
-                    <span>merge · changes vs first parent</span>
-                  </Show>
-                </div>
-                <Show when={detail.latest?.commit.hash === c.hash} fallback={<div class={meta}>Loading files…</div>}>
-                  <Tree items={fileItems()} defaultOpen selected={props.selected} onSelect={props.onSelect} badge={(f) => f.status} />
-                </Show>
-                <Show when={detail.error}>
-                  <div class={error}>{detail.error.message}</div>
-                </Show>
-              </div>
-            </Show>
+            <Show when={openHash() === c.hash}>{details(c)}</Show>
           </>
         )}
       </For>

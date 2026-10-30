@@ -2,6 +2,7 @@ import { createSignal } from 'solid-js'
 
 // createStoredSignal is a signal remembered in localStorage. Booleans are stored as "1"/"0",
 // strings as-is (the formats earlier versions used, so saved preferences keep working).
+// The third value sets without saving (a value from a link must not change the preference).
 export function createStoredSignal(key, fallback) {
   const bool = typeof fallback === 'boolean'
   const raw = localStorage.getItem(key)
@@ -11,5 +12,5 @@ export function createStoredSignal(key, fallback) {
     localStorage.setItem(key, bool ? (next ? '1' : '0') : next)
     set(() => next)
   }
-  return [get, store]
+  return [get, store, set]
 }

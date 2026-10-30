@@ -85,6 +85,14 @@ export default function MarkdownPreview(props) {
       const p = resolvePath(from, img.getAttribute('src'))
       if (p) img.src = `/api/raw?${new URLSearchParams({ repo, path: p })}`
     }
+    // in-page links ([TOC], footnotes) scroll here; letting the browser change the hash would add a
+    // history entry, and going back over it would close the file on phones
+    for (const a of mdEl.querySelectorAll('a[href^="#"]')) {
+      a.onclick = (e) => {
+        e.preventDefault()
+        mdEl.querySelector(`[id="${CSS.escape(decodeURIComponent(a.getAttribute('href').slice(1)))}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }
     for (const a of mdEl.querySelectorAll('a[href]:not([href^="#"])')) {
       const p = resolvePath(from, a.getAttribute('href'))
       if (p) {

@@ -7,6 +7,7 @@ import { createStoredSignal } from '../hooks/createStoredSignal.js'
 import CodeView from './CodeView.jsx'
 import { parseDiff } from '../lib/git/diff.js'
 import { highlight } from '../lib/highlight/highlight.js'
+import { viewOf, views } from '../lib/utils/url.js'
 
 const head = css({
   px: '14px',
@@ -36,16 +37,7 @@ const where = (s) =>
 
 // Viewer shows the selected file or change as Diff, File or (markdown) Preview.
 export default function Viewer(props) {
-  const isMd = () => /\.(md|markdown|mdx)$/i.test(props.sel?.path || '')
-  // what a selection can show: changes also offer the whole file; markdown adds a rendered preview
-  const views = () => [...(props.sel?.kind === 'diff' ? ['diff'] : []), 'file', ...(isMd() ? ['preview'] : [])]
-  // last choice per kind; markdown opens as preview from the Explorer and as diff from Changes
-  const [pref, setPref] = createSignal({ file: 'preview', diff: 'diff' })
-  const view = () => {
-    const v = views()
-    const p = pref()[props.sel?.kind]
-    return v.includes(p) ? p : v[0]
-  }
+  const view = () => viewOf(props.sel, props.pref)
   const preview = () => !!props.sel && view() === 'preview'
 
   const [storedTheme, setTheme] = createStoredSignal('mdTheme', 'github-light')
@@ -85,11 +77,11 @@ export default function Viewer(props) {
     <Show when={props.sel} fallback={<div class={empty}>Select a file or a change</div>}>
       <div class={head}>
         <button class={back} onClick={props.onBack} aria-label="Back to list">←</button>
-        <Show when={views().length > 1}>
+        <Show when={views(props.sel).length > 1}>
           <span class={seg} role="group" aria-label="View">
-            <For each={views()}>
+            <For each={views(props.sel)}>
               {(v) => (
-                <button class={segBtn({ active: view() === v })} aria-pressed={view() === v} onClick={() => setPref((p) => ({ ...p, [props.sel.kind]: v }))}>
+                <button class={segBtn({ active: view() === v })} aria-pressed={view() === v} onClick={() => props.onPref({ ...props.pref, [props.sel.kind]: v })}>
                   {LABELS[v]}
                 </button>
               )}

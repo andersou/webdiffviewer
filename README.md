@@ -47,7 +47,8 @@ Run `webdiffviewer` in any folder and open your browser. It finds the repository
   - GitHub Light (default), Dark and Dark Dimmed themes;
   - relative images load from the repo, and relative links open inside the viewer;
   - a **TOC** panel next to the preview (an overlay on phones) that highlights the visible section.
-- **Other repositories (`-parent-dir`):** the 📁 button and **Ctrl/⌘+K** open the fuzzy picker. The open repo lives in the URL (`?root=`), so each tab can show a different one.
+- **Other repositories (`-parent-dir`):** the 📁 button and **Ctrl/⌘+K** open the fuzzy picker.
+- **Links:** the URL holds the folder, repo, tab, base, open commit, open file and view, so a reload or a shared link opens the same screen, and Back/Forward move between files. For example, `/?base=main&diff=web/src/App.jsx` or `/?tab=files&file=README.md`. The repo (`repo=`) is a path relative to the open folder, and `root=` is the `-parent-dir` folder. Themes, TOC and All branches stay as personal preferences.
 - **Responsive:** up to 768px wide, the UI shows one pane at a time.
 - **Refresh:** reloads when the window gains focus, or with the refresh button.
 
@@ -144,7 +145,7 @@ pkg/
   middleware/            Host check (DNS rebinding) and static file caching
 web/embed.go             exposes the built frontend (go:embed can't reach parent folders)
 web/src/
-  App.jsx                selection state (folder, repo, base, open file) and the sidebar/viewer layout
+  App.jsx                selection state (folder, repo, base, open file), URL and history, sidebar/viewer layout
   components/            Tree, Viewer, CodeView, MarkdownPreview, Commits, CommitGraph, Picker,
                          RepoList, BranchBar, ChangesPanel
     ui/                  presentational primitives: shared Panda styles, Switch
@@ -154,7 +155,7 @@ web/src/
     git/                 diff parser, commit graph layout, status -> tree items
     markdown/            markdown-it engine and plugins, rendering, themes, frontmatter, admonitions
     icons/               Material Icon Theme lookup
-    utils/               fuzzy search, link resolution
+    utils/               fuzzy search, link resolution, URL <-> screen state
     highlight/           Shiki highlighting: file name -> language, lazy grammars and themes
 ```
 

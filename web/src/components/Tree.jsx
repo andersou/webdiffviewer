@@ -33,7 +33,8 @@ export default function Tree(props) {
   const root = createMemo(() => build(props.items))
   // expansion state survives refreshes because it is keyed by folder path, not by node object
   const [open, setOpen] = createStore({})
-  const isOpen = (path) => open[path] ?? props.defaultOpen
+  // reveal (a file path) opens its folders, e.g. for a file opened from a link
+  const isOpen = (path) => open[path] ?? (props.defaultOpen || !!props.reveal?.startsWith(path + '/'))
 
   const Node = (p) => (
     <Show
@@ -43,6 +44,7 @@ export default function Tree(props) {
           class={row({ selected: props.selected === p.node.item.key })}
           style={{ 'padding-left': `${p.depth * 12 + 22}px` }}
           title={p.node.item.path}
+          ref={(el) => props.reveal === p.node.item.path && queueMicrotask(() => el.scrollIntoView({ block: 'nearest' }))}
           onClick={() => props.onSelect(p.node.item)}
         >
           <span class={iconBox}>

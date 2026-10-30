@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createResource, createSignal, Show } from 'solid-js'
+import { batch, createEffect, createMemo, createResource, createSignal, Show } from 'solid-js'
 import { css, cva } from 'styled-system/css'
 import BranchBar from './components/BranchBar.jsx'
 import ChangesPanel from './components/ChangesPanel.jsx'
@@ -14,6 +14,7 @@ import { createWindowEvent } from './hooks/createWindowEvent.js'
 import { api, json } from './lib/api/client.js'
 import { statusByPath } from './lib/git/changes.js'
 import { lastSegment } from './lib/utils/paths.js'
+import { DEFAULT_PREF, findRepo, fromSearch, relPath, toSearch, viewOf } from './lib/utils/url.js'
 
 // narrow screens show one pane at a time: the list, or (with .viewing on the root) the file
 const app = css({ display: 'flex', h: '100%' })
@@ -48,66 +49,151 @@ export default function App() {
   const refresh = () => setTick((t) => t + 1)
   createWindowEvent('focus', refresh)
 
-  // --parent-dir: the folder being browsed lives in ?root= so each tab can look at a different repo
+  // The URL holds what is on screen (lib/utils/url.js). `want` is a decoded URL waiting for its
+  // folder's repo list: the server only accepts repos that /api/repos has listed.
+  const [want, setWant] = createSignal(fromSearch(location.search))
+  // --parent-dir: the folder being browsed (?root=), so each tab can look at a different repo
   const [cfg] = createResource(() => json('config'))
-  const [root, setRoot] = createSignal(new URLSearchParams(location.search).get('root') || '')
+  const [root, setRoot] = createSignal(want().root)
   const [picker, setPicker] = createSignal(false)
   const rootName = () => lastSegment(root() || cfg()?.base || '')
-  createEffect(() => (document.title = rootName() ? `${rootName()} · webdiffviewer` : 'webdiffviewer'))
   createWindowEvent('keydown', (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && cfg()?.parent) {
       e.preventDefault()
       setPicker(true)
     }
   })
+  // push keeps the current screen one Back away; the state change after it rewrites the new entry
+  const push = () => history.pushState({}, '', location.href)
   const openRoot = (path) => {
     const r = path === cfg()?.base ? '' : path
-    history.replaceState(null, '', r ? `?root=${encodeURIComponent(r)}` : location.pathname)
-    setRoot(r)
     setPicker(false)
+    if (r === root()) return
+    push()
+    batch(() => {
+      setRoot(r)
+      setWant(fromSearch(r ? '?' + new URLSearchParams({ root: r }) : ''))
+    })
   }
 
   const [repos] = createResource(
     () => [tick(), root()],
-    ([, r]) => json('repos', r ? { root: r } : {}),
+    ([, r]) => json('repos', r ? { root: r } : {}).then((list) => ({ root: r, list })),
   )
   const [repo, setRepo] = createSignal()
   const [tab, setTab] = createSignal('changes')
   const [sel, setSel] = createSignal()
   const [base, setBase] = createSignal('') // '' = working tree vs index/HEAD; else compare with this branch
   // in a branch comparison, also include uncommitted + untracked changes
-  const [withWT, setWithWT] = createStoredSignal('compareWT', true)
+  const [withWT, setWithWT, setWithWTOnce] = createStoredSignal('compareWT', true)
+  const [pref, setPref] = createSignal(DEFAULT_PREF) // last view (Diff/File/Preview) per kind
+  const [openHash, setOpenHash] = createSignal() // commit expanded in the Commits tab
   const toggleWT = (on) => {
     setWithWT(on)
     setSel((s) => (s?.base ? { ...s, wt: on } : s)) // re-diff the open file in the new mode
   }
-  const pickRepo = (path) => {
-    setRepo(path)
-    setSel()
-    setBase('')
+  const selectRepo = (path) =>
+    batch(() => {
+      setRepo(path)
+      setSel()
+      setBase('')
+      setOpenHash()
+    })
+  const pickRepo = (path) => path !== repo() && (push(), selectRepo(path))
+  const pickBase = (b) => {
+    push()
+    batch(() => {
+      setBase(b)
+      setSel((s) => (s?.kind === 'diff' && !s.commit ? undefined : s)) // that diff belongs to the old mode
+    })
   }
-  // keep the selected repo valid: first repo on load, after opening another folder, or if it disappeared
+  // apply a pending URL once its folder's repos are listed; otherwise keep the selected repo valid
+  // (first repo on load, or if it disappeared)
   createEffect(() => {
-    const list = repos.latest
-    const known = list?.some((r) => r.path === repo() || r.worktrees.some((w) => w.path === repo()))
-    if (list?.length && !known) pickRepo(list[0].path)
+    const r = repos.latest
+    if (!r || !cfg()) return
+    const w = want()
+    if (w) {
+      if (w.root !== r.root) return // still the previous folder's list
+      const path = findRepo(r.list, r.root || cfg().base, w.repo)
+      batch(() => {
+        setWant()
+        setTab(w.tab)
+        if (!path) return r.list.length && selectRepo(r.list[0].path)
+        setRepo(path)
+        setBase(w.base)
+        if (w.base) setWithWTOnce(w.wt)
+        setOpenHash(w.commit || undefined)
+        setSel(w.sel)
+        if (w.sel && w.view) setPref((p) => ({ ...p, [w.sel.kind]: w.view }))
+      })
+      // a fresh link to a file on a phone: open it with the list one Back away, as if tapped
+      if (path && w.sel && narrow() && history.state === null) showFile()
+      else if (path && w.sel && history.state?.wdvFile) setShowList(false) // reload on the file pane
+      return
+    }
+    const known = r.list.some((x) => x.path === repo() || x.worktrees.some((wt) => wt.path === repo()))
+    if (r.list.length && !known) selectRepo(r.list[0].path)
+  })
+
+  const search = () => {
+    if (want() || !cfg() || !repo()) return null
+    const s = sel()
+    const v = s && viewOf(s, pref())
+    return toSearch({
+      root: root(),
+      repo: relPath(root() || cfg().base, repo()),
+      tab: tab(),
+      base: base(),
+      wt: withWT(),
+      commit: openHash(),
+      sel: s,
+      view: v !== viewOf(s, DEFAULT_PREF) && v,
+    })
+  }
+  // sync writes the state into the current history entry (keeping its state, e.g. the phone marker)
+  const sync = () => {
+    const s = search()
+    if (s !== null && s !== location.search) history.replaceState(history.state, '', s || location.pathname)
+  }
+  createEffect(sync)
+  createEffect(() => {
+    const name = rootName() ? `${rootName()} · webdiffviewer` : 'webdiffviewer'
+    document.title = sel() ? `${lastSegment(sel().path)} · ${name}` : name // names entries in the Back menu
   })
 
   // phones show one pane: the list, or the open file. "Back" only shows the list, so the file
   // stays open and a right-to-left swipe (or the button at the bottom) returns to it.
   const [showList, setShowList] = createSignal(true)
-  // On phones the file view gets its own browser history entry, so the system back gesture or
-  // button returns to the list (state intact) instead of leaving the page. Desktop shows both
-  // panes, so it doesn't touch history.
+  // On phones the file view gets its own history entry ({wdvFile}), so the system back gesture
+  // returns to the list (state intact) instead of the previous file or page. The list entry is
+  // marked {} so a reload can tell it apart from a fresh link (state null).
   const narrow = () => matchMedia('(width < 48rem)').matches
   const showFile = () => {
     if (!showList()) return
     setShowList(false)
-    if (narrow()) history.pushState({ wdvFile: true }, '')
+    if (narrow()) {
+      sync()
+      history.replaceState({}, '')
+      history.pushState({ wdvFile: true }, '')
+    }
   }
   const showListPane = () => (narrow() && history.state?.wdvFile ? history.back() : setShowList(true)) // back() lands in popstate
-  createWindowEvent('popstate', (e) => setShowList(!(e.state?.wdvFile && sel())))
+  createWindowEvent('popstate', (e) => {
+    // phone, file -> list: only the pane changes; the list entry takes the current state
+    if (narrow() && !e.state?.wdvFile && !showList()) return setShowList(true), sync()
+    const w = fromSearch(location.search)
+    setShowList(!(e.state?.wdvFile && w.sel))
+    if (search() === location.search) return // same screen (phone, list -> file)
+    batch(() => {
+      setRoot(w.root)
+      setWant(w)
+    })
+  })
+  // desktop: each file opened is one Back away; phones push only list -> file (showFile)
   const open = (item) => {
+    if (item.key === sel()?.key) return showFile()
+    if (!narrow()) push()
     setSel(item)
     showFile()
   }
@@ -120,9 +206,14 @@ export default function App() {
     () => repo() && [repo(), tick(), base(), withWT()],
     ([r, , b, wt]) => json('status', b ? { repo: r, base: b, wt: wt ? 1 : 0 } : { repo: r }),
   )
-  const statusList = () => status.latest || []
-  const fileItems = createMemo(() => (files.latest || []).map((path) => ({ path, key: 'f:' + path, kind: 'file' })))
+  const statusList = () => (status.error ? [] : status.latest || []) // .latest throws after an error (e.g. a deleted base)
+  const fileItems = createMemo(() => (files.error ? [] : files.latest || []).map((path) => ({ path, key: 'f:' + path, kind: 'file' })))
   const letters = createMemo(() => statusByPath(statusList()))
+
+  createEffect(() => {
+    const b = !branches.error && branches.latest
+    if (b && base() && !b.local.includes(base()) && !b.remote.includes(base())) batch(() => (setBase(''), setSel((s) => (s?.base ? undefined : s))))
+  })
 
   const checkout = async (branch) => {
     try {
@@ -137,7 +228,7 @@ export default function App() {
     <div class={sel() && !showList() ? `${app} viewing` : app}>
       <aside class={sidebar} onTouchStart={swipe.onTouchStart} onTouchEnd={swipe.onTouchEnd}>
         <RepoList
-          repos={repos.latest}
+          repos={repos.error ? undefined : repos.latest?.list}
           error={repos.error}
           selected={repo()}
           onSelect={pickRepo}
@@ -147,7 +238,7 @@ export default function App() {
           onPick={() => setPicker(true)}
         />
         <Show when={branches.latest}>
-          {(b) => <BranchBar branches={b()} onCheckout={checkout} base={base()} onBase={setBase} withWorktree={withWT()} onWithWorktree={toggleWT} />}
+          {(b) => <BranchBar branches={b()} onCheckout={checkout} base={base()} onBase={pickBase} withWorktree={withWT()} onWithWorktree={toggleWT} />}
         </Show>
 
         <nav class={tabs}>
@@ -167,10 +258,10 @@ export default function App() {
             <ChangesPanel status={statusList()} base={base()} withWorktree={withWT()} selected={sel()?.key} onSelect={open} />
           </Show>
           <Show when={tab() === 'files'}>
-            <Tree items={fileItems()} selected={sel()?.key} onSelect={open} badge={(i) => letters().get(i.path)} />
+            <Tree items={fileItems()} selected={sel()?.key} reveal={sel()?.kind === 'file' ? sel().path : undefined} onSelect={open} badge={(i) => letters().get(i.path)} />
           </Show>
           <Show when={tab() === 'commits'}>
-            <Commits repo={repo()} tick={tick()} selected={sel()?.key} onSelect={open} />
+            <Commits repo={repo()} tick={tick()} selected={sel()?.key} onSelect={open} openHash={openHash()} onOpenHash={setOpenHash} />
           </Show>
           <Show when={status.error || files.error}>
             <div class={error}>{(status.error || files.error).message}</div>
@@ -188,7 +279,7 @@ export default function App() {
         <Picker parent={cfg().parent} current={root() || cfg().base} onPick={openRoot} onClose={() => setPicker(false)} />
       </Show>
       <main class={main}>
-        <Viewer repo={repo()} sel={sel()} tick={tick()} onBack={showListPane} onOpen={(path) => setSel({ kind: 'file', path, key: 'f:' + path })} />
+        <Viewer repo={repo()} sel={sel()} tick={tick()} pref={pref()} onPref={setPref} onBack={showListPane} onOpen={(path) => open({ kind: 'file', path, key: 'f:' + path })} />
       </main>
     </div>
   )
