@@ -1,14 +1,14 @@
 import { createMemo, createSignal, For, Show } from 'solid-js'
 import { createStore } from 'solid-js/store'
 import { css } from 'styled-system/css'
-import { badge, name, row } from '../styles/ui'
+import { badge, name, row } from './ui/styles.js'
 
 const chev = css({ w: '10px', color: '#999' })
 const iconBox = css({ w: '16px', h: '16px', flex: 'none', '& img': { w: '16px', h: '16px' } })
 
 // icon map + SVG URLs load in the background; rows render without icons until then
 const [icons, setIcons] = createSignal()
-import('./icons').then(setIcons)
+import('../lib/icons/icons.js').then(setIcons)
 
 // items: [{ path, ... }]; folders are derived from the paths and rendered lazily (only when expanded).
 function build(items) {

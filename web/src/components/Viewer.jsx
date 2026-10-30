@@ -1,11 +1,12 @@
-import { createEffect, createResource, createSignal, For, Show } from 'solid-js'
+import { createResource, createSignal, For, Show } from 'solid-js'
 import { css, cva } from 'styled-system/css'
-import { text } from '../lib/api'
-import MarkdownPreview, { THEMES } from '../markdown/MarkdownPreview'
-import { empty, errorBox, muted } from '../styles/ui'
-import CodeView from './CodeView'
-import { parseDiff } from './diff'
-import { highlight } from './highlight'
+import { text } from '../lib/api/client.js'
+import MarkdownPreview, { THEMES } from './MarkdownPreview.jsx'
+import { empty, errorBox, muted } from './ui/styles.js'
+import { createStoredSignal } from '../hooks/createStoredSignal.js'
+import CodeView from './CodeView.jsx'
+import { parseDiff } from '../lib/git/diff.js'
+import { highlight } from '../lib/highlight.js'
 import 'highlight.js/styles/tokyo-night-dark.css'
 
 const head = css({
@@ -48,14 +49,10 @@ export default function Viewer(props) {
   }
   const preview = () => !!props.sel && view() === 'preview'
 
-  const stored = localStorage.getItem('mdTheme')
-  const [theme, setTheme] = createSignal(THEMES[stored] ? stored : 'github-light')
-  createEffect(() => localStorage.setItem('mdTheme', theme()))
-  const [showToc, setShowToc] = createSignal(localStorage.getItem('mdToc') === '1')
-  const toggleToc = () => {
-    localStorage.setItem('mdToc', showToc() ? '0' : '1')
-    setShowToc(!showToc())
-  }
+  const [storedTheme, setTheme] = createStoredSignal('mdTheme', 'github-light')
+  const theme = () => (THEMES[storedTheme()] ? storedTheme() : 'github-light') // ignore unknown saved values
+  const [showToc, setShowToc] = createStoredSignal('mdToc', false)
+  const toggleToc = () => setShowToc((on) => !on)
   const [headingCount, setHeadingCount] = createSignal(0)
 
   const [data] = createResource(

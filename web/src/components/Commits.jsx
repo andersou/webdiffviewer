@@ -1,24 +1,18 @@
 import { createMemo, createResource, createSignal, For, Show } from 'solid-js'
 import { css, cva } from 'styled-system/css'
-import { json } from '../lib/api'
-import { graph } from './graph'
-import Tree from '../tree/Tree'
-import { error, muted, name } from '../styles/ui'
-
-// px; taller rows on phones for touch. Read once: the SVG is drawn at this exact height (no stretching).
-const ROW = matchMedia('(width < 48rem)').matches ? 34 : 26
-const LANE = 12 // px between lanes
-const PAD = 6 // px left of the first lane, so its dot isn't clipped
-const MAX_LANES = 6 // wider graphs are clipped so the sidebar keeps room for the message
-const COLORS = ['#4fc1ff', '#c586c0', '#dcdcaa', '#4ec9b0', '#ce9178', '#9cdcfe', '#d16969', '#b5cea8']
-const color = (lane) => COLORS[lane % COLORS.length]
+import { json } from '../lib/api/client.js'
+import { graph } from '../lib/git/graph.js'
+import { createCommitDetails } from '../hooks/createCommitDetails.js'
+import { createStoredSignal } from '../hooks/createStoredSignal.js'
+import CommitGraph, { MAX_LANES, ROW } from './CommitGraph.jsx'
+import Tree from './Tree.jsx'
+import { error, muted, name } from './ui/styles.js'
 
 const toolbar = css({ display: 'flex', alignItems: 'center', gap: '6px', px: '10px', py: '6px', fontSize: '12px', color: 'ui.muted', cursor: 'pointer' })
 const commitRow = cva({
   base: { display: 'flex', alignItems: 'center', w: '100%', pr: '10px', textAlign: 'left', whiteSpace: 'nowrap', _hover: { bg: 'ui.hover' } },
   variants: { open: { true: { bg: 'ui.selected', _hover: { bg: 'ui.selected' } } } },
 })
-const svgCls = css({ flex: 'none', display: 'block' })
 const refCls = cva({
   base: { flex: 'none', fontSize: '10px', lineHeight: '15px', px: '5px', mr: '5px', borderRadius: '3px', border: '1px solid', maxW: '90px', overflow: 'hidden', textOverflow: 'ellipsis' },
   variants: {
@@ -47,24 +41,9 @@ function ago(seconds) {
 const refKind = (r) => (r.startsWith('HEAD') ? 'head' : r.startsWith('tag: ') ? 'tag' : 'branch')
 const refLabel = (r) => r.replace(/^HEAD -> /, '').replace(/^tag: /, '')
 
-function Graph(props) {
-  const x = (lane) => PAD + lane * LANE + LANE / 2
-  const path = ([x1, y1, x2, y2]) => {
-    const [ax, ay, bx, by] = [x(x1), y1 * ROW, x(x2), y2 * ROW]
-    // forks/merges bend in the half-row they cross; straight lanes are plain lines
-    return ax === bx ? `M${ax} ${ay}V${by}` : `M${ax} ${ay}C${ax} ${(ay + by) / 2} ${bx} ${(ay + by) / 2} ${bx} ${by}`
-  }
-  return (
-    <svg class={svgCls} width={PAD + props.width * LANE + 4} height={ROW} aria-hidden="true">
-      <For each={props.row.segs}>{(s) => <path d={path(s)} stroke={color(s[4])} stroke-width="2" fill="none" />}</For>
-      <circle cx={x(props.row.col)} cy={ROW / 2} r={props.merge ? 3 : 4} fill={props.merge ? '#1e1e1e' : color(props.row.col)} stroke={color(props.row.col)} stroke-width="2" />
-    </svg>
-  )
-}
-
 // Commits lists history with a lane graph; opening a commit shows its message and changed files.
 export default function Commits(props) {
-  const [all, setAll] = createSignal(localStorage.getItem('commitsAll') === '1')
+  const [all, setAll] = createStoredSignal('commitsAll', false)
   const [openHash, setOpenHash] = createSignal()
   const [extra, setExtra] = createSignal([]) // pages loaded with "Load more"
   const [loadingMore, setLoadingMore] = createSignal(false)
@@ -86,31 +65,8 @@ export default function Commits(props) {
     setExtra((e) => [...e, ...page])
     setDone(page.length < 300)
   }
-  const toggleAll = (on) => {
-    localStorage.setItem('commitsAll', on ? '1' : '0')
-    setAll(on)
-  }
 
-  // commits never change, so details are cached by hash and fetched ahead on hover/touch;
-  // file icons are warmed at the same time so the tree appears complete
-  const cache = new Map()
-  const load = (hash) => {
-    const key = `${props.repo}\0${hash}`
-    if (!cache.has(key)) {
-      const p = json('commit', { repo: props.repo, hash })
-      p.then((d) => import('../tree/icons').then(({ fileIcon, folderIcon }) => {
-        const urls = new Set()
-        for (const f of d.files) {
-          urls.add(fileIcon(f.path))
-          const parts = f.path.split('/')
-          for (let i = 1; i < parts.length; i++) urls.add(folderIcon(parts.slice(0, i).join('/'), true))
-        }
-        for (const u of urls) new Image().src = u
-      })).catch(() => cache.delete(key)) // retry on next open
-      cache.set(key, p)
-    }
-    return cache.get(key)
-  }
+  const load = createCommitDetails(() => props.repo)
   const [detail] = createResource(
     () => openHash() && [props.repo, openHash()],
     ([, hash]) => load(hash),
@@ -122,7 +78,7 @@ export default function Commits(props) {
   return (
     <>
       <label class={toolbar}>
-        <input type="checkbox" checked={all()} onChange={(e) => toggleAll(e.target.checked)} />
+        <input type="checkbox" checked={all()} onChange={(e) => setAll(e.target.checked)} />
         All branches
       </label>
       <For each={commits()}>
@@ -137,7 +93,7 @@ export default function Commits(props) {
               onPointerDown={() => load(c.hash)}
               onClick={() => setOpenHash(openHash() === c.hash ? undefined : c.hash)}
             >
-              <Graph row={rows()[i()]} width={width()} merge={c.parents.length > 1} />
+              <CommitGraph row={rows()[i()]} width={width()} merge={c.parents.length > 1} />
               <For each={c.refs.slice(0, 2)}>{(r) => <span class={refCls({ kind: refKind(r) })}>{refLabel(r)}</span>}</For>
               <Show when={c.refs.length > 2}>
                 <span class={refCls({ kind: 'branch' })}>+{c.refs.length - 2}</span>

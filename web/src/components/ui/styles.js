@@ -37,6 +37,7 @@ export const heading = css({
   justifyContent: 'space-between',
   alignItems: 'center',
 })
+export const section = css({ borderBottom: '1px solid token(colors.ui.border)', pb: '4px', maxH: '35%', overflow: 'auto' })
 export const select = css({ minW: 0, bg: 'ui.input', color: 'ui.fg', border: '1px solid token(colors.ui.borderStrong)', borderRadius: '2px', p: '3px' })
 
 // status letter of a change: M, A, U (untracked), D, R, C — "•" suffix allowed

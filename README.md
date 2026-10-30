@@ -129,14 +129,18 @@ main.go                  flags, embedded frontend, server startup
 internal/git/            runs git and parses its output (status, diff, log, worktrees); no HTTP
 internal/server/         HTTP API: routes and middleware, repos/branches, changes/files, commits
 web/src/
-  app/                   App: sidebar, repo/branch/base controls, tabs
-  tree/                  file tree and Material Icon Theme lookup
-  viewer/                Viewer (Diff | File | Preview), CodeView, diff parser, syntax highlighting
-  markdown/              markdown engine (markdown-it plugins), preview + TOC, themes, admonitions, frontmatter
-  commits/               Commits tab and the graph layout
-  picker/                repository picker (-parent-dir)
-  lib/                   API client and pure helpers (fuzzy search, link resolution)
-  styles/                shared Panda CSS styles
+  App.jsx                selection state (folder, repo, base, open file) and the sidebar/viewer layout
+  components/            Tree, Viewer, CodeView, MarkdownPreview, Commits, CommitGraph, Picker,
+                         RepoList, BranchBar, ChangesPanel
+    ui/                  presentational primitives: shared Panda styles, Switch
+  hooks/                 createStoredSignal (localStorage), createSwipe, createWindowEvent, createCommitDetails
+  lib/                   logic by domain, no UI
+    api/                 API client
+    git/                 diff parser, commit graph layout, status -> tree items
+    markdown/            markdown-it engine and plugins, rendering, themes, frontmatter, admonitions
+    icons/               Material Icon Theme lookup
+    utils/               fuzzy search, link resolution
+    highlight.js         syntax highlighting
 ```
 
-Tests sit next to the code they cover (`*_test.go`, `*.test.js`). Styles use Panda CSS (`web/panda.config.ts`); `web/src/markdown/markdown.css` adjusts the HTML generated from markdown. `npm install` copies the icon SVGs to `web/public/icons` (`web/scripts/copy-icons.js`). Screenshots in `docs/screenshots` come from a made-up demo repository.
+Tests sit next to the code they cover (`*_test.go`, `*.test.js`). Styles use Panda CSS (`web/panda.config.ts`); `web/src/components/MarkdownPreview.css` adjusts the HTML generated from markdown. `npm install` copies the icon SVGs to `web/public/icons` (`web/scripts/copy-icons.js`). Screenshots in `docs/screenshots` come from a made-up demo repository.

@@ -2,6 +2,6 @@
 // module is loaded lazily by Tree.jsx); each SVG is fetched from /icons/<icon>.svg when a row shows
 // it, so files that appear later resolve the same way.
 import { fileExtensions, fileNames, folderNames } from 'material-icon-theme/dist/material-icons.json'
-import { iconRules } from './iconRules'
+import { iconRules } from './iconRules.js'
 
 export const { fileIcon, folderIcon } = iconRules({ fileNames, fileExtensions, folderNames })

@@ -1,8 +1,8 @@
 import { createEffect, createMemo, createResource, createSignal, For, on, onMount, Show } from 'solid-js'
 import { css, cva } from 'styled-system/css'
-import { json } from '../lib/api'
-import { rank } from '../lib/fuzzy'
-import { muted, name } from '../styles/ui'
+import { json } from '../lib/api/client.js'
+import { rank } from '../lib/utils/fuzzy.js'
+import { muted, name } from './ui/styles.js'
 
 const backdrop = css({ position: 'fixed', inset: 0, zIndex: 10, bg: 'rgba(0, 0, 0, 0.45)', display: 'flex', justifyContent: 'center', alignItems: 'flex-start', pt: '12vh', mdDown: { pt: '4vh' } })
 const dialog = css({

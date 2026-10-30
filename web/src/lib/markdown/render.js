@@ -1,6 +1,6 @@
 let engine
 const load = () =>
-  (engine ??= Promise.all([import('./engine'), import('dompurify'), import('katex/dist/katex.min.css')]).then(([{ render }, { default: purify }]) => ({
+  (engine ??= Promise.all([import('./engine.js'), import('dompurify'), import('katex/dist/katex.min.css')]).then(([{ render }, { default: purify }]) => ({
     render,
     purify,
   })))

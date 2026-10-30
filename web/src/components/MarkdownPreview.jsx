@@ -1,10 +1,10 @@
 import { createEffect, createResource, createSignal, For, onCleanup, Show } from 'solid-js'
 import { css, cva } from 'styled-system/css'
-import { text } from '../lib/api'
-import { resolvePath } from '../lib/links'
-import { errorBox } from '../styles/ui'
-import { renderDiagrams, renderMarkdown } from './render'
-import './markdown.css'
+import { text } from '../lib/api/client.js'
+import { resolvePath } from '../lib/utils/links.js'
+import { errorBox } from './ui/styles.js'
+import { renderDiagrams, renderMarkdown } from '../lib/markdown/render.js'
+import './MarkdownPreview.css'
 
 // preview themes; their CSS lives in themes.js and loads with the first preview
 export const THEMES = {
@@ -33,7 +33,7 @@ const tocItem = cva({
 // MarkdownPreview renders a repo markdown file (at props.rev) with diagrams, repo-relative links
 // and images, and an optional TOC panel with scrollspy. Headings are reported via onHeadings.
 export default function MarkdownPreview(props) {
-  createEffect(() => import('./themes').then((m) => m.applyTheme(props.theme)))
+  createEffect(() => import('../lib/markdown/themes.js').then((m) => m.applyTheme(props.theme)))
 
   // theme is in the key so diagrams re-render in matching colors
   const [md] = createResource(
