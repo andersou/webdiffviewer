@@ -55,21 +55,30 @@ export default function Viewer(props) {
   const toggleToc = () => setShowToc((on) => !on)
   const [headingCount, setHeadingCount] = createSignal(0)
 
+  // a refresh (window focus) that fetches the same text returns the same rows, so nothing re-renders
+  let last
   const [data] = createResource(
     () => props.sel && !preview() && [props.repo, props.sel, props.tick, view()],
     async ([repo, s, , v]) => {
+      const src =
+        v === 'file'
+          ? await text('file', { repo, path: s.path, rev: rev(s) })
+          : await text('diff', { repo, path: s.path, orig: s.orig || '', base: s.base || '', commit: s.commit || '', wt: s.wt ? 1 : 0, staged: s.staged ? 1 : 0, untracked: s.untracked ? 1 : 0 })
+      const id = JSON.stringify([repo, s.key, s.base, s.wt, v])
+      if (last?.id === id && last.src === src) return last.rows
+      let rows
       if (v === 'file') {
-        const src = await text('file', { repo, path: s.path, rev: rev(s) })
-        const rows = src.split('\n').map((t, i) => ({ t: 'ctx', n: i + 1, text: t }))
+        rows = src.split('\n').map((t, i) => ({ t: 'ctx', n: i + 1, text: t }))
         await highlight(s.path, rows)
-        return rows
+      } else {
+        rows = parseDiff(src)
+        // highlight each side as continuous code; context lines end up with the new side's tokens
+        await highlight(s.path, rows.filter((r) => r.t === 'del' || r.t === 'ctx'))
+        await highlight(s.path, rows.filter((r) => r.t === 'add' || r.t === 'ctx'))
+        if (!rows.length) rows = [{ t: 'hunk', text: src.trim() || 'No changes' }] // binary/mode-only diffs
       }
-      const src = await text('diff', { repo, path: s.path, orig: s.orig || '', base: s.base || '', commit: s.commit || '', wt: s.wt ? 1 : 0, staged: s.staged ? 1 : 0, untracked: s.untracked ? 1 : 0 })
-      const rows = parseDiff(src)
-      // highlight each side as continuous code; context lines end up with the new side's tokens
-      await highlight(s.path, rows.filter((r) => r.t === 'del' || r.t === 'ctx'))
-      await highlight(s.path, rows.filter((r) => r.t === 'add' || r.t === 'ctx'))
-      return rows.length ? rows : [{ t: 'hunk', text: src.trim() || 'No changes' }] // binary/mode-only diffs
+      last = { id, src, rows }
+      return rows
     },
   )
 

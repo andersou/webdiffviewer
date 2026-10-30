@@ -1,5 +1,6 @@
 import { For, Show } from 'solid-js'
 import { css } from 'styled-system/css'
+import { lastSegment } from '../lib/utils/paths.js'
 import { error, heading, muted, name, row, section } from './ui/styles.js'
 
 const rootBtn = css({
@@ -29,7 +30,6 @@ const iconBtn = css({
   _hover: { bg: 'ui.hover', color: 'ui.fg' },
   mdDown: { w: '36px', h: '36px', my: '-12px', mr: '-12px' },
 })
-const lastSegment = (p) => p.split(/[\\/]/).pop() // filesystem path: \ on Windows
 
 // RepoList shows the open folder (with the --parent-dir picker button), its repos and their worktrees.
 export default function RepoList(props) {

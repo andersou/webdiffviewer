@@ -1,4 +1,4 @@
-import { createMemo, createResource, createSignal, For, Show } from 'solid-js'
+import { createMemo, createResource, createSignal, For, onCleanup, Show } from 'solid-js'
 import { css, cva } from 'styled-system/css'
 import { json } from '../lib/api/client.js'
 import { graph } from '../lib/git/graph.js'
@@ -48,14 +48,25 @@ export default function Commits(props) {
   const [extra, setExtra] = createSignal([]) // pages loaded with "Load more"
   const [loadingMore, setLoadingMore] = createSignal(false)
   const [done, setDone] = createSignal(false)
+  // a refresh reloads only the first page; extra pages are dropped only for another repo or mode
+  let listId
   const [first] = createResource(
     () => props.repo && [props.repo, props.tick, all()],
     ([repo, , a]) => {
-      setExtra([])
-      return json('log', { repo, all: a ? 1 : 0 }).then((list) => (setDone(list.length < 300), list))
+      if (listId !== `${repo}\0${a}`) {
+        listId = `${repo}\0${a}`
+        setExtra([])
+        setDone(false)
+      }
+      return json('log', { repo, all: a ? 1 : 0 }).then((list) => (extra().length || setDone(list.length < 300), list))
     },
   )
-  const commits = createMemo(() => [...(first.latest || []), ...extra()])
+  // new commits on top shift the pages, so the first page may repeat some of the extra ones
+  const commits = createMemo(() => {
+    const top = first.latest || []
+    const seen = new Set(top.map((c) => c.hash))
+    return [...top, ...extra().filter((c) => !seen.has(c.hash))]
+  })
   const rows = createMemo(() => graph(commits()))
   const width = createMemo(() => Math.min(MAX_LANES, Math.max(1, ...rows().map((r) => r.width))))
 
@@ -67,6 +78,8 @@ export default function Commits(props) {
   }
 
   const load = createCommitDetails(() => props.repo)
+  let hoverTimer // prefetch only when the pointer rests on a row, not while sweeping across the list
+  onCleanup(() => clearTimeout(hoverTimer))
   const [detail] = createResource(
     () => openHash() && [props.repo, openHash()],
     ([, hash]) => load(hash),
@@ -89,7 +102,8 @@ export default function Commits(props) {
               style={{ height: `${ROW}px` }}
               aria-expanded={openHash() === c.hash}
               title={`${c.hash.slice(0, 10)} · ${c.author} · ${new Date(c.time * 1000).toLocaleString()}${c.refs.length ? ' · ' + c.refs.join(', ') : ''}`}
-              onPointerEnter={() => load(c.hash)}
+              onPointerEnter={() => (hoverTimer = setTimeout(() => load(c.hash), 120))}
+              onPointerLeave={() => clearTimeout(hoverTimer)}
               onPointerDown={() => load(c.hash)}
               onClick={() => setOpenHash(openHash() === c.hash ? undefined : c.hash)}
             >

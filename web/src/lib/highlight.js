@@ -1,7 +1,7 @@
 const MAX = 512 * 1024 // bigger files stay plain text so the view opens instantly
 
 let hljs
-export const load = () => (hljs ??= import('highlight.js/lib/common').then((m) => m.default))
+const load = () => (hljs ??= import('highlight.js/lib/common').then((m) => m.default))
 
 // splitLines cuts highlighted HTML at newlines, closing and reopening spans so every line is valid HTML.
 export function splitLines(html) {

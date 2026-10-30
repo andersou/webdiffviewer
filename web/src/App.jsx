@@ -13,6 +13,7 @@ import { createSwipe } from './hooks/createSwipe.js'
 import { createWindowEvent } from './hooks/createWindowEvent.js'
 import { api, json } from './lib/api/client.js'
 import { statusByPath } from './lib/git/changes.js'
+import { lastSegment } from './lib/utils/paths.js'
 
 // narrow screens show one pane at a time: the list, or (with .viewing on the root) the file
 const app = css({ display: 'flex', h: '100%' })
@@ -51,7 +52,7 @@ export default function App() {
   const [cfg] = createResource(() => json('config'))
   const [root, setRoot] = createSignal(new URLSearchParams(location.search).get('root') || '')
   const [picker, setPicker] = createSignal(false)
-  const rootName = () => (root() || cfg()?.base || '').split(/[\\/]/).pop() // filesystem path: \ on Windows
+  const rootName = () => lastSegment(root() || cfg()?.base || '')
   createEffect(() => (document.title = rootName() ? `${rootName()} · webdiffviewer` : 'webdiffviewer'))
   createWindowEvent('keydown', (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && cfg()?.parent) {

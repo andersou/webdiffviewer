@@ -36,9 +36,18 @@ export default function MarkdownPreview(props) {
   createEffect(() => import('../lib/markdown/themes.js').then((m) => m.applyTheme(props.theme)))
 
   // theme is in the key so diagrams re-render in matching colors
+  // a refresh (window focus) with unchanged text returns the same object, so the HTML and
+  // diagrams aren't rebuilt
+  let last
   const [md] = createResource(
     () => [props.repo, props.path, props.tick, props.theme, props.rev],
-    async ([repo, path, , t, rev]) => ({ repo, path, dark: THEMES[t].dark, html: await renderMarkdown(await text('file', { repo, path, rev })) }),
+    async ([repo, path, , t, rev]) => {
+      const src = await text('file', { repo, path, rev })
+      const id = JSON.stringify([repo, path, t, rev])
+      if (last?.id === id && last.src === src) return last.result
+      last = { id, src, result: { repo, path, dark: THEMES[t].dark, html: await renderMarkdown(src) } }
+      return last.result
+    },
   )
   let mdEl, scrollEl
   const [headings, setHeadings] = createSignal([])
