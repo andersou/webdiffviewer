@@ -20,9 +20,20 @@ export function graph(commits) {
     for (let i = 0; i < lanes.length; i++) if (lanes[i] === c.hash) lanes[i] = null
     const [first, ...rest] = c.parents
     if (first !== undefined) {
-      const k = lanes.indexOf(first) // parent already awaited elsewhere: join that lane
-      if (k === -1) lanes[col] = first
-      segs.push([col, 0.5, k === -1 ? col : k, 1, k === -1 ? col : k])
+      const k = lanes.indexOf(first)
+      if (k === -1) {
+        lanes[col] = first
+        segs.push([col, 0.5, col, 1, col])
+      } else if (k > col) {
+        // parent already awaited further right: pull that lane into this one, so the
+        // leftmost line (usually the main branch) stays straight
+        lanes[k] = null
+        lanes[col] = first
+        segs[segs.findIndex((g) => g[0] === k && g[1] === 0)] = [k, 0, col, 1, k]
+        segs.push([col, 0.5, col, 1, col])
+      } else {
+        segs.push([col, 0.5, k, 1, k]) // awaited further left: join it
+      }
     }
     for (const p of rest) {
       let k = lanes.indexOf(p)
