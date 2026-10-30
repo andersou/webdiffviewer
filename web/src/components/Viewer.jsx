@@ -25,7 +25,6 @@ const segBtn = cva({
   base: { px: '10px', py: '1px', _hover: { bg: '#333' }, '&:not(:first-child)': { borderLeft: '1px solid token(colors.ui.borderStrong)' } },
   variants: { active: { true: { bg: 'ui.accent', color: '#fff', _hover: { bg: 'ui.accent' } } } },
 })
-const themeSel = css({ float: 'right', ml: '10px', px: '4px', py: '1px', bg: 'ui.input', color: 'ui.fg', border: '1px solid token(colors.ui.borderStrong)', borderRadius: '3px' })
 const LABELS = { diff: 'Diff', file: 'File', preview: 'Preview' }
 
 // version shown by File/Preview: the commit itself in the Commits tab, the index for staged
@@ -88,11 +87,6 @@ export default function Viewer(props) {
             </For>
           </span>
         </Show>
-        <Show when={preview()}>
-          <select class={themeSel} aria-label="Preview theme" value={theme()} onChange={(e) => setTheme(e.target.value)}>
-            <For each={Object.entries(THEMES)}>{([k, t]) => <option value={k}>{t.label}</option>}</For>
-          </select>
-        </Show>
         <Show when={preview() && headingCount()}>
           <span class={seg}>
             <button class={segBtn({ active: showToc() })} aria-pressed={showToc()} aria-controls="md-toc" title="Table of contents" onClick={toggleToc}>
@@ -115,6 +109,7 @@ export default function Viewer(props) {
             rev={rev(props.sel)}
             tick={props.tick}
             theme={theme()}
+            onTheme={setTheme}
             showToc={showToc()}
             onCloseToc={() => setShowToc(false)}
             onHeadings={(list) => setHeadingCount(list.length)}
