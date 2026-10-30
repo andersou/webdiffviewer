@@ -74,7 +74,7 @@ make build      # installs dependencies, builds the frontend, compiles ./webdiff
 make install    # optional: copies it to $GOPATH/bin
 ```
 
-The frontend is embedded in the binary (`go:embed`), so `go build` needs `web/dist`, which only exists after `make build`.
+The frontend is embedded in the binary (`go:embed`, in `web/embed.go`), so building Go needs `web/dist`, which only exists after `make build`.
 
 ## Usage
 
@@ -106,9 +106,9 @@ webdiffviewer -host 0.0.0.0                  # reachable on the network (see Sec
 ## Development
 
 ```sh
-go run . &                 # API on :8080 (needs web/dist: run make build once)
-cd web && npm run dev      # Vite with hot reload; proxies /api to :8080
-make test                  # Go and JS tests
+go run ./cmd/webdiffviewer &   # API on :8080 (needs web/dist: run make build once)
+cd web && npm run dev          # Vite with hot reload; proxies /api to :8080
+make test                      # Go and JS tests
 ```
 
 ### Releases
@@ -125,9 +125,20 @@ Pushing to `develop` publishes `-beta` pre-releases.
 ### Layout
 
 ```
-main.go                  flags, embedded frontend, server startup
-internal/git/            runs git and parses its output (status, diff, log, worktrees); no HTTP
-internal/server/         HTTP API: routes and middleware, repos/branches, changes/files, commits
+cmd/webdiffviewer/       entry point: flags and server startup
+internal/
+  api/
+    router.go            registers every route, the static frontend and middleware
+    handler/<domain>/    thin HTTP handlers (workspace, branches, changes, files, commits):
+                         router.go registers, get.go/post.go parse the request and call the service
+    helpers/             JSON/text/error responses, repo and path validation
+  git/                   data layer: runs git and parses its output (status, diff, log, worktrees)
+services/<domain>/       business logic per domain: data.go (types), get.go/post.go (operations),
+                         utils.go (private helpers)
+pkg/
+  apperr/                errors carrying an HTTP status, so services stay HTTP-free
+  middleware/            Host check (DNS rebinding) and static file caching
+web/embed.go             exposes the built frontend (go:embed can't reach parent folders)
 web/src/
   App.jsx                selection state (folder, repo, base, open file) and the sidebar/viewer layout
   components/            Tree, Viewer, CodeView, MarkdownPreview, Commits, CommitGraph, Picker,

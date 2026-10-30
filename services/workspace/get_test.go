@@ -1,8 +1,6 @@
-package server
+package workspace
 
 import (
-	"net/http/httptest"
-	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
@@ -16,10 +14,8 @@ func TestRootStaysInParent(t *testing.T) {
 	if err := os.Symlink(outside, filepath.Join(parent, "escape")); err != nil {
 		t.Logf("no symlink support (%v); skipping that case", err) // Windows without developer mode
 	}
-	s := New(filepath.Join(parent, "repo"), parent, nil)
-	get := func(root string) (string, error) {
-		return s.root(httptest.NewRequest("GET", "/api/repos?"+url.Values{"root": {root}}.Encode(), nil))
-	}
+	w := New(filepath.Join(parent, "repo"), parent)
+	get := w.Root
 	if got, err := get(filepath.Join(parent, "repo")); err != nil || got != filepath.Join(parent, "repo") {
 		t.Fatalf("inside parent: %q %v", got, err)
 	}
@@ -28,7 +24,7 @@ func TestRootStaysInParent(t *testing.T) {
 			t.Fatalf("%s should be rejected", bad)
 		}
 	}
-	s.parent = ""
+	w.parent = ""
 	if _, err := get(filepath.Join(tmp, "parent")); err == nil {
 		t.Fatal("picker disabled: other roots must be rejected")
 	}

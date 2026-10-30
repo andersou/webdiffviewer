@@ -1,6 +1,6 @@
 build:
 	cd web && npm ci && npm run build
-	go build -o webdiffviewer .
+	go build -o webdiffviewer ./cmd/webdiffviewer
 
 # go test needs web/dist (embedded), so it builds first
 test: build
@@ -8,4 +8,4 @@ test: build
 	cd web && npm test
 
 install: build
-	go install .
+	go install ./cmd/webdiffviewer

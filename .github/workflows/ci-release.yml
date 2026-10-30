@@ -139,7 +139,7 @@ jobs:
           set -euo pipefail
           go test ./...
           binary="webdiffviewer${{ matrix.extension }}"
-          go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o "$binary" .
+          go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o "$binary" ./cmd/webdiffviewer
           test "$(./"$binary" -version)" = "webdiffviewer $VERSION"
           archive="webdiffviewer-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}.${{ matrix.archive }}"
           mkdir -p dist

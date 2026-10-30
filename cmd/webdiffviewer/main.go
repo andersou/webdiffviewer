@@ -2,10 +2,8 @@
 package main
 
 import (
-	"embed"
 	"flag"
 	"fmt"
-	"io/fs"
 	"log"
 	"net"
 	"net/http"
@@ -13,11 +11,10 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/andersou/webdiffviewer/internal/server"
+	"github.com/andersou/webdiffviewer/internal/api"
+	"github.com/andersou/webdiffviewer/services/workspace"
+	"github.com/andersou/webdiffviewer/web"
 )
-
-//go:embed all:web/dist
-var dist embed.FS
 
 // version is set by release builds: go build -ldflags "-X main.version=1.2.3"
 var version = "dev"
@@ -52,10 +49,9 @@ func main() {
 		}
 	}
 
-	web, _ := fs.Sub(dist, "web/dist")
 	addr := net.JoinHostPort(*host, strconv.Itoa(*port))
 	log.Printf("webdiffviewer: %s -> http://%s", base, addr)
-	log.Fatal(http.ListenAndServe(addr, server.New(base, parent, web).Handler(*host)))
+	log.Fatal(http.ListenAndServe(addr, api.New(workspace.New(base, parent), web.Dist(), *host)))
 }
 
 // realPath makes p absolute and resolves symlinks: git reports real paths (e.g. /private/var, not /var)
