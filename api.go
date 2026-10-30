@@ -334,6 +334,10 @@ func parseNameStatus(out string) []Change {
 	list := []Change{}
 	parts := strings.Split(out, "\x00")
 	for i := 0; i+1 < len(parts); i += 2 {
+		if parts[i] == "" { // stray separator (e.g. after git show's header): skip it, never index it
+			i--
+			continue
+		}
 		c := Change{X: parts[i][:1], Y: " ", Path: parts[i+1]}
 		if (c.X == "R" || c.X == "C") && i+2 < len(parts) {
 			c.Orig, c.Path = parts[i+1], parts[i+2]
@@ -420,12 +424,12 @@ func (s *server) diff(w http.ResponseWriter, r *http.Request, repo string) {
 	untracked := q.Get("untracked") == "1"
 	switch base, commit := q.Get("base"), q.Get("commit"); {
 	case commit != "":
-		parent, err := parentOf(repo, commit)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+		if !isHash(commit) {
+			http.Error(w, "bad commit", http.StatusBadRequest)
 			return
 		}
-		args = append(args, "-M", parent, commit, "--")
+		// one git call; merges diff against the first parent, root commits against nothing
+		args = []string{"-c", "core.quotepath=off", "show", "--no-color", "--no-ext-diff", "--diff-merges=first-parent", "-M", "--format=", commit, "--"}
 		if orig != "" {
 			args = append(args, orig)
 		}
@@ -534,22 +538,6 @@ var hashRe = regexp.MustCompile(`^[0-9a-f]{4,64}$`)
 // isHash accepts abbreviated or full commit ids; anything else (refs, options) is rejected.
 func isHash(s string) bool { return hashRe.MatchString(s) }
 
-// parentOf returns the first parent of commit, or the empty tree for a root commit,
-// so `git diff <parent> <commit>` always shows what the commit introduced.
-func parentOf(repo, commit string) (string, error) {
-	if !isHash(commit) {
-		return "", errors.New("bad commit")
-	}
-	if out, err := git(repo, "rev-parse", "--verify", "-q", commit+"^1"); err == nil {
-		return strings.TrimSpace(string(out)), nil
-	}
-	if _, err := git(repo, "rev-parse", "--verify", "-q", commit+"^{commit}"); err != nil {
-		return "", errors.New("unknown commit")
-	}
-	out, err := git(repo, "hash-object", "-t", "tree", "/dev/null") // empty tree (sha1 or sha256 repos)
-	return strings.TrimSpace(string(out)), err
-}
-
 type Commit struct {
 	Hash    string   `json:"hash"`
 	Parents []string `json:"parents"`
@@ -605,28 +593,34 @@ func (s *server) log(w http.ResponseWriter, r *http.Request, repo string) {
 	writeJSON(w, list)
 }
 
-// commit returns one commit's details and the files it changed (merges: against the first parent).
+// parseShow splits `git show --format=<logFormat> --name-status -z` into the commit and its files.
+func parseShow(out string) (Commit, []Change, bool) {
+	head, files, ok := strings.Cut(out, "\x1e")
+	info := parseLog(head + "\x1e")
+	if !ok || len(info) != 1 {
+		return Commit{}, nil, false
+	}
+	// with -z git ends the header with "\x1e\x00\n" before the file list
+	return info[0], parseNameStatus(strings.TrimLeft(files, "\x00\n")), true
+}
+
+// commit returns one commit's details and the files it changed (merges: against the first parent)
+// in a single git call, so opening a commit costs one process.
 func (s *server) commit(w http.ResponseWriter, r *http.Request, repo string) {
 	hash := r.URL.Query().Get("hash")
-	parent, err := parentOf(repo, hash)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if !isHash(hash) {
+		http.Error(w, "bad commit", http.StatusBadRequest)
 		return
 	}
-	out, err := git(repo, "show", "-s", "--format="+logFormat, hash)
+	out, err := git(repo, "show", "--diff-merges=first-parent", "--name-status", "-z", "-M", "--format="+logFormat, hash)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	info := parseLog(string(out))
-	if len(info) != 1 {
 		http.Error(w, "unknown commit", http.StatusNotFound)
 		return
 	}
-	files, err := git(repo, "diff", "--name-status", "-z", "-M", parent, hash)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	c, files, ok := parseShow(string(out))
+	if !ok {
+		http.Error(w, "unknown commit", http.StatusNotFound)
 		return
 	}
-	writeJSON(w, map[string]any{"commit": info[0], "files": parseNameStatus(string(files))})
+	writeJSON(w, map[string]any{"commit": c, "files": files})
 }

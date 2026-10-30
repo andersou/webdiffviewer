@@ -107,3 +107,27 @@ func TestIsHash(t *testing.T) {
 		}
 	}
 }
+
+func TestParseShow(t *testing.T) {
+	// real git show -z output: the header ends with RS, NUL, newline
+	out := "abc\x00def\x00Ana\x00a@x\x001700000000\x00\x00subject\x00body\n\x1e\x00\nM\x00a.go\x00R090\x00old.go\x00new.go\x00"
+	c, files, ok := parseShow(out)
+	if !ok || c.Hash != "abc" || c.Subject != "subject" || c.Body != "body" {
+		t.Fatalf("commit %+v ok=%v", c, ok)
+	}
+	want := []Change{{X: "M", Y: " ", Path: "a.go"}, {X: "R", Y: " ", Path: "new.go", Orig: "old.go"}}
+	if !reflect.DeepEqual(files, want) {
+		t.Fatalf("files %+v", files)
+	}
+	if _, files, _ := parseShow("abc\x00\x00A\x00a@x\x001\x00\x00empty\x00\x1e\x00\n"); len(files) != 0 {
+		t.Fatalf("no files expected, got %+v", files)
+	}
+}
+
+func TestParseNameStatusIgnoresStraySeparators(t *testing.T) {
+	got := parseNameStatus("\x00\x00M\x00a.go\x00\x00D\x00b.go\x00")
+	want := []Change{{X: "M", Y: " ", Path: "a.go"}, {X: "D", Y: " ", Path: "b.go"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %+v", got)
+	}
+}

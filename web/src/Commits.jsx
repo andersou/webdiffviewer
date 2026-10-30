@@ -91,9 +91,29 @@ export default function Commits(props) {
     setAll(on)
   }
 
+  // commits never change, so details are cached by hash and fetched ahead on hover/touch;
+  // file icons are warmed at the same time so the tree appears complete
+  const cache = new Map()
+  const load = (hash) => {
+    const key = `${props.repo}\0${hash}`
+    if (!cache.has(key)) {
+      const p = json('commit', { repo: props.repo, hash })
+      p.then((d) => import('./icons').then(({ fileIcon, folderIcon }) => {
+        const urls = new Set()
+        for (const f of d.files) {
+          urls.add(fileIcon(f.path))
+          const parts = f.path.split('/')
+          for (let i = 1; i < parts.length; i++) urls.add(folderIcon(parts.slice(0, i).join('/'), true))
+        }
+        for (const u of urls) new Image().src = u
+      })).catch(() => cache.delete(key)) // retry on next open
+      cache.set(key, p)
+    }
+    return cache.get(key)
+  }
   const [detail] = createResource(
     () => openHash() && [props.repo, openHash()],
-    ([repo, hash]) => json('commit', { repo, hash }),
+    ([, hash]) => load(hash),
   )
   const fileItems = createMemo(() =>
     (detail.latest?.files || []).map((f) => ({ ...f, key: `c:${openHash()}:${f.path}`, kind: 'diff', commit: openHash(), status: f.x })),
@@ -113,6 +133,8 @@ export default function Commits(props) {
               style={{ height: `${ROW}px` }}
               aria-expanded={openHash() === c.hash}
               title={`${c.hash.slice(0, 10)} · ${c.author} · ${new Date(c.time * 1000).toLocaleString()}${c.refs.length ? ' · ' + c.refs.join(', ') : ''}`}
+              onPointerEnter={() => load(c.hash)}
+              onPointerDown={() => load(c.hash)}
               onClick={() => setOpenHash(openHash() === c.hash ? undefined : c.hash)}
             >
               <Graph row={rows()[i()]} width={width()} merge={c.parents.length > 1} />
@@ -125,19 +147,23 @@ export default function Commits(props) {
             </button>
             <Show when={openHash() === c.hash}>
               <div class={details}>
-                <Show when={detail.latest?.commit.hash === c.hash} fallback={<div class={meta}>Loading…</div>}>
-                  <div class={message}>
-                    <strong>{detail.latest.commit.subject}</strong>
-                    <Show when={detail.latest.commit.body}>{'\n\n' + detail.latest.commit.body}</Show>
-                  </div>
-                  <div class={meta}>
-                    <span>{detail.latest.commit.author} &lt;{detail.latest.commit.email}&gt;</span>
-                    <span>{new Date(detail.latest.commit.time * 1000).toLocaleString()}</span>
-                    <span>{c.hash.slice(0, 10)}</span>
-                    <Show when={c.parents.length > 1}>
-                      <span>merge · changes vs first parent</span>
-                    </Show>
-                  </div>
+                {/* subject, author and date come from the list, so they show instantly */}
+                <div class={message}>
+                  <strong>{c.subject}</strong>
+                  <Show when={detail.latest?.commit.hash === c.hash && detail.latest.commit.body}>{'\n\n' + detail.latest.commit.body}</Show>
+                </div>
+                <div class={meta}>
+                  <span>
+                    {c.author}
+                    <Show when={detail.latest?.commit.hash === c.hash}> &lt;{detail.latest.commit.email}&gt;</Show>
+                  </span>
+                  <span>{new Date(c.time * 1000).toLocaleString()}</span>
+                  <span>{c.hash.slice(0, 10)}</span>
+                  <Show when={c.parents.length > 1}>
+                    <span>merge · changes vs first parent</span>
+                  </Show>
+                </div>
+                <Show when={detail.latest?.commit.hash === c.hash} fallback={<div class={meta}>Loading files…</div>}>
                   <Tree items={fileItems()} defaultOpen selected={props.selected} onSelect={props.onSelect} badge={(f) => f.status} />
                 </Show>
                 <Show when={detail.error}>
