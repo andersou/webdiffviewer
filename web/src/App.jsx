@@ -76,6 +76,21 @@ const tabBtn = cva({
 })
 const count = css({ bg: '#4d4d4d', borderRadius: '8px', px: '6px', fontSize: '11px' })
 const treeBox = css({ flex: 1, overflow: 'auto', pb: '20px' })
+// phones only: return to the open file from the list (same as swiping right-to-left)
+const toFile = css({
+  display: 'none',
+  mdDown: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    w: '100%',
+    px: '14px',
+    py: '12px',
+    borderTop: '1px solid token(colors.ui.border)',
+    bg: 'ui.raised',
+    textAlign: 'left',
+  },
+})
 
 export default function App() {
   const [tick, setTick] = createSignal(0)
@@ -105,6 +120,21 @@ export default function App() {
   const [repo, setRepo] = createSignal()
   const [tab, setTab] = createSignal('changes')
   const [sel, setSel] = createSignal()
+  // phones show one pane: the list, or the open file. "Back" only shows the list, so the file
+  // stays open and a right-to-left swipe (or the button at the bottom) returns to it.
+  const [showList, setShowList] = createSignal(true)
+  const open = (item) => {
+    setSel(item)
+    setShowList(false)
+  }
+  let touch
+  const onTouchStart = (e) => (touch = e.touches.length === 1 && { x: e.touches[0].clientX, y: e.touches[0].clientY })
+  const onTouchEnd = (e) => {
+    const t = e.changedTouches[0]
+    // mostly horizontal, at least 60px, right-to-left
+    if (touch && sel() && touch.x - t.clientX > 60 && Math.abs(t.clientY - touch.y) < 40) setShowList(false)
+    touch = null
+  }
   const [base, setBase] = createSignal('') // '' = working tree vs index/HEAD; else compare with this branch
   // in a branch comparison, also include uncommitted + untracked changes (default on, remembered)
   const [withWT, setWithWT] = createSignal(localStorage.getItem('compareWT') !== '0')
@@ -174,8 +204,8 @@ export default function App() {
   }
 
   return (
-    <div class={sel() ? `${app} viewing` : app}>
-      <aside class={sidebar}>
+    <div class={sel() && !showList() ? `${app} viewing` : app}>
+      <aside class={sidebar} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         <Show when={cfg()?.parent}>
           <button class={rootBtn} title="Open another repository (Ctrl/⌘+K)" onClick={() => setPicker(true)}>
             <span class={name}>📁 {rootName()}</span>
@@ -269,30 +299,36 @@ export default function App() {
             <h3 class={heading}>
               vs {base()} ({baseItems().length})
             </h3>
-            <Tree items={baseItems()} defaultOpen selected={sel()?.key} onSelect={setSel} badge={(i) => i.status} />
+            <Tree items={baseItems()} defaultOpen selected={sel()?.key} onSelect={open} badge={(i) => i.status} />
           </Show>
           <Show when={tab() === 'changes' && !base()}>
             <Show when={stagedItems().length}>
               <h3 class={heading}>Staged Changes ({stagedItems().length})</h3>
-              <Tree items={stagedItems()} defaultOpen selected={sel()?.key} onSelect={setSel} badge={(i) => i.status} />
+              <Tree items={stagedItems()} defaultOpen selected={sel()?.key} onSelect={open} badge={(i) => i.status} />
             </Show>
             <h3 class={heading}>Changes ({unstagedItems().length})</h3>
-            <Tree items={unstagedItems()} defaultOpen selected={sel()?.key} onSelect={setSel} badge={(i) => i.status} />
+            <Tree items={unstagedItems()} defaultOpen selected={sel()?.key} onSelect={open} badge={(i) => i.status} />
           </Show>
           <Show when={tab() === 'files'}>
-            <Tree items={fileItems()} selected={sel()?.key} onSelect={setSel} badge={(i) => statusByPath().get(i.path)} />
+            <Tree items={fileItems()} selected={sel()?.key} onSelect={open} badge={(i) => statusByPath().get(i.path)} />
           </Show>
           <Show when={status.error || files.error}>
             <div class={error}>{(status.error || files.error).message}</div>
           </Show>
         </div>
+        <Show when={sel()}>
+          <button class={toFile} onClick={() => setShowList(false)}>
+            <span class={name}>↩ {sel().path.split('/').pop()}</span>
+            <span class={muted}>swipe ←</span>
+          </button>
+        </Show>
       </aside>
 
       <Show when={picker()}>
         <Picker parent={cfg().parent} current={root() || cfg().base} onPick={openRoot} onClose={() => setPicker(false)} />
       </Show>
       <main class={main}>
-        <Viewer repo={repo()} sel={sel()} tick={tick()} onBack={() => setSel()} onOpen={(path) => setSel({ kind: 'file', path, key: 'f:' + path })} />
+        <Viewer repo={repo()} sel={sel()} tick={tick()} onBack={() => setShowList(true)} onOpen={(path) => setSel({ kind: 'file', path, key: 'f:' + path })} />
       </main>
     </div>
   )
