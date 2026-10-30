@@ -18,8 +18,8 @@ const wrap = css({ flex: 1, minH: 0, display: 'flex', position: 'relative' })
 const pane = css({ flex: 1, minW: 0, display: 'flex', position: 'relative' })
 const scroller = css({ flex: 1, overflow: 'auto' })
 // theme and TOC buttons float over the text's top-right corner, clear of the scrollbar, in the
-// theme's own colors; above the phone TOC overlay, so it can be closed again
-const tools = css({ position: 'absolute', top: '10px', right: '22px', zIndex: 6, display: 'flex', flexDirection: 'column', gap: '6px' })
+// theme's own colors (the phone TOC overlay covers them and has its own close button)
+const tools = css({ position: 'absolute', top: '10px', right: '22px', zIndex: 2, display: 'flex', flexDirection: 'column', gap: '6px' })
 const toolBtn = css({
   display: 'grid',
   placeItems: 'center',
@@ -60,8 +60,9 @@ const tocPanel = css({
   bg: 'ui.panel',
   borderLeft: '1px solid token(colors.ui.border)',
   py: '8px',
-  mdDown: { position: 'absolute', top: 0, right: 0, bottom: 0, w: '80%', zIndex: 5, pt: '84px', boxShadow: '-8px 0 24px rgba(0, 0, 0, 0.5)' },
+  mdDown: { position: 'absolute', top: 0, right: 0, bottom: 0, w: '80%', zIndex: 5, boxShadow: '-8px 0 24px rgba(0, 0, 0, 0.5)' },
 })
+const tocClose = css({ display: 'block', ml: 'auto', mr: '6px', mb: '2px', px: '8px', py: '2px', fontSize: '16px', lineHeight: 1, color: 'ui.muted', borderRadius: '3px', _hover: { color: 'ui.fg', bg: 'ui.hover' } })
 const tocItem = cva({
   base: { display: 'block', w: '100%', py: '3px', pr: '10px', textAlign: 'left', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', _hover: { bg: 'ui.hover' }, mdDown: { py: '7px', fontSize: '14px' } },
   variants: { active: { true: { color: 'ui.link', bg: 'ui.selected', _hover: { bg: 'ui.selected' } } } },
@@ -188,6 +189,9 @@ export default function MarkdownPreview(props) {
         </div>
         <Show when={props.showToc && headings().length}>
           <nav id="md-toc" class={tocPanel} aria-label="Table of contents">
+            <button class={tocClose} title="Close table of contents" aria-label="Close table of contents" onClick={props.onCloseToc}>
+              ✕
+            </button>
             <For each={headings()}>
               {(h) => (
                 <button
