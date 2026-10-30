@@ -10,10 +10,14 @@ import (
 	"github.com/andersou/webdiffviewer/pkg/apperr"
 )
 
-// New serves base and, if parent != "", any repo under parent. Both must be real (symlink-free) paths.
-func New(base, parent string) *Workspace {
-	return &Workspace{base: base, parent: parent, allowed: map[string]bool{}}
+// New serves base and, if parent != "", any repo under parent. Both must be real (symlink-free)
+// paths. With checkIgnore, gitignored files are never served.
+func New(base, parent string, checkIgnore bool) *Workspace {
+	return &Workspace{base: base, parent: parent, checkIgnore: checkIgnore, allowed: map[string]bool{}}
 }
+
+// CheckIgnore reports whether gitignored files must be hidden (--check-ignore).
+func (w *Workspace) CheckIgnore() bool { return w.checkIgnore }
 
 func (w *Workspace) Config() Config { return Config{Base: w.base, Parent: w.parent} }
 

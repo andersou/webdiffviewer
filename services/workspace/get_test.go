@@ -14,7 +14,7 @@ func TestRootStaysInParent(t *testing.T) {
 	if err := os.Symlink(outside, filepath.Join(parent, "escape")); err != nil {
 		t.Logf("no symlink support (%v); skipping that case", err) // Windows without developer mode
 	}
-	w := New(filepath.Join(parent, "repo"), parent)
+	w := New(filepath.Join(parent, "repo"), parent, false)
 	get := w.Root
 	if got, err := get(filepath.Join(parent, "repo")); err != nil || got != filepath.Join(parent, "repo") {
 		t.Fatalf("inside parent: %q %v", got, err)

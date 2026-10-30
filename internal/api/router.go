@@ -14,8 +14,9 @@ import (
 	ws "github.com/andersou/webdiffviewer/services/workspace"
 )
 
-// New returns the full handler: /api routes, the frontend in web, and the Host check for bindHost.
-func New(w *ws.Workspace, web fs.FS, bindHost string) http.Handler {
+// New returns the full handler: /api routes, the frontend in web, and the Host check
+// (IPs, localhost and allowedHosts).
+func New(w *ws.Workspace, web fs.FS, allowedHosts []string) http.Handler {
 	mux := http.NewServeMux()
 	workspace.Register(mux, w)
 	branches.Register(mux, w)
@@ -23,5 +24,5 @@ func New(w *ws.Workspace, web fs.FS, bindHost string) http.Handler {
 	files.Register(mux, w)
 	commits.Register(mux, w)
 	mux.Handle("/", middleware.CacheStatic(http.FileServerFS(web)))
-	return middleware.HostGuard(bindHost, mux)
+	return middleware.HostGuard(allowedHosts, mux)
 }

@@ -91,14 +91,18 @@ webdiffviewer -host 0.0.0.0                  # reachable on the network (see Sec
 | `-host` | `127.0.0.1` | Address to listen on |
 | `-port` | `8080` | Port |
 | `-parent-dir` | — | Folder whose repos the picker can open |
+| `-check-ignore` | off | Never serve gitignored files (`.env` and other local secrets) |
+| `-allowed-hosts` | — | Comma-separated host names accepted besides IPs and `localhost`, e.g. `mac.local` or a reverse-proxy domain |
 | `-version` | — | Print the version and exit |
 | `[dir]` | `.` | Folder to start in |
 
 ## Security
 
-- By default the server listens on loopback only and rejects requests with any other `Host` header, which blocks DNS rebinding.
+- By default the server listens on loopback only. However it is bound, it only answers requests whose `Host` header is an IP address, `localhost` or a name from `-allowed-hosts`. This blocks DNS rebinding (a website pointing its own domain at your machine so the visitor's browser reads it).
 - **There is no authentication.** With `-host 0.0.0.0`, anyone on the network can read the files and switch branches. With `-parent-dir`, that applies to every repo in that folder.
-- The API rejects paths that leave the repo, through `..` or symlinks. `-parent-dir` also rejects folders outside it.
+- The API rejects paths that leave the repo, through `..` or symlinks, and any path into `.git` (remote URLs there can hold tokens). `-parent-dir` also rejects folders outside it.
+- Gitignored files (like `.env`) can be opened by default. Use `-check-ignore` to hide them, especially with `-host 0.0.0.0`.
+- Git output is capped (files 5MB, diffs 10MB), so a huge file in history can't exhaust memory.
 - Only hex commit ids are accepted, so refs and options can't be injected into git commands.
 - Markdown HTML is sanitized with DOMPurify. Raw files (`/api/raw`) are served with `Content-Security-Policy: sandbox`.
 - Branch switching requires a JSON body, so another website open in the browser can't trigger it.

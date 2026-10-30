@@ -4,27 +4,27 @@ package middleware
 import (
 	"net"
 	"net/http"
+	"strings"
 )
 
-// HostGuard blocks DNS-rebinding when bound to loopback: only loopback Host headers are accepted.
-func HostGuard(bind string, h http.Handler) http.Handler {
-	if !isLoopback(bind) {
-		return h
+// HostGuard blocks DNS rebinding (a website pointing its own domain at this server so the
+// visitor's browser reads it): the Host header must be an IP address, localhost, or one of
+// allowed (--allowed-hosts, e.g. mac.local or a reverse-proxy domain). It applies however the
+// server is bound, LAN addresses included.
+func HostGuard(allowed []string, h http.Handler) http.Handler {
+	ok := map[string]bool{"localhost": true}
+	for _, a := range allowed {
+		ok[strings.ToLower(a)] = true
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		hn, _, err := net.SplitHostPort(r.Host)
+		host, _, err := net.SplitHostPort(r.Host)
 		if err != nil {
-			hn = r.Host
+			host = r.Host
 		}
-		if !isLoopback(hn) {
+		if !ok[strings.ToLower(host)] && net.ParseIP(host) == nil {
 			http.Error(w, "forbidden host", http.StatusForbidden)
 			return
 		}
 		h.ServeHTTP(w, r)
 	})
-}
-
-func isLoopback(h string) bool {
-	ip := net.ParseIP(h)
-	return h == "localhost" || ip != nil && ip.IsLoopback()
 }

@@ -27,7 +27,7 @@ func (rt *Router) getFile(w http.ResponseWriter, r *http.Request) {
 		helpers.Fail(w, err)
 		return
 	}
-	buf, err := files.Read(repo, r.URL.Query().Get("path"), r.URL.Query().Get("rev"))
+	buf, err := files.Read(repo, r.URL.Query().Get("path"), r.URL.Query().Get("rev"), rt.ws.CheckIgnore())
 	if err != nil {
 		helpers.Fail(w, err)
 		return
@@ -42,7 +42,7 @@ func (rt *Router) getRaw(w http.ResponseWriter, r *http.Request) {
 		helpers.Fail(w, err)
 		return
 	}
-	f, st, err := files.Open(repo, r.URL.Query().Get("path"))
+	f, st, err := files.Open(repo, r.URL.Query().Get("path"), rt.ws.CheckIgnore())
 	if err != nil {
 		helpers.Fail(w, err)
 		return

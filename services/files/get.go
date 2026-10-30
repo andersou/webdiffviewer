@@ -26,9 +26,9 @@ func List(repo string) ([]string, error) {
 }
 
 // Read returns a text file from the working tree (rev ""), or the version git stores at
-// rev "HEAD", ":" (the index) or a commit hash.
-func Read(repo, path, rev string) ([]byte, error) {
-	buf, err := read(repo, path, rev)
+// rev "HEAD", ":" (the index) or a commit hash. With hideIgnored, gitignored files are refused.
+func Read(repo, path, rev string, hideIgnored bool) ([]byte, error) {
+	buf, err := read(repo, path, rev, hideIgnored)
 	if err != nil {
 		return nil, err
 	}
@@ -41,8 +41,12 @@ func Read(repo, path, rev string) ([]byte, error) {
 	return buf, nil
 }
 
-// Open opens a working-tree file for serving as-is. Symlinks that leave the repo are refused.
-func Open(repo, path string) (*os.File, fs.FileInfo, error) {
+// Open opens a working-tree file for serving as-is. Symlinks that leave the repo are refused,
+// and with hideIgnored so are gitignored files (where secrets like .env live).
+func Open(repo, path string, hideIgnored bool) (*os.File, fs.FileInfo, error) {
+	if hideIgnored && git.IsIgnored(repo, path) {
+		return nil, nil, apperr.NotFound("file not found")
+	}
 	f, err := os.OpenInRoot(repo, path)
 	if err != nil {
 		return nil, nil, apperr.NotFound(err.Error())

@@ -2,6 +2,9 @@
 // and per-file diffs.
 package changes
 
+// MaxDiff is the largest diff the API sends; bigger ones would freeze the browser anyway.
+const MaxDiff = 10 << 20
+
 // DiffQuery selects which diff of Path to show. Exactly one source applies, in this order:
 // Commit (what that commit changed), Untracked (whole new file), Base (vs the merge-base with
 // that branch, plus the working tree when WithWorktree), Staged (index vs HEAD), else working tree.
@@ -13,4 +16,5 @@ type DiffQuery struct {
 	Base         string
 	WithWorktree bool
 	Staged       bool
+	HideIgnored  bool // --check-ignore: refuse untracked diffs of gitignored files
 }

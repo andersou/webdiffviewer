@@ -42,11 +42,17 @@ func Diff(repo string, q DiffQuery) ([]byte, error) {
 	if q.Path == "" || q.Orig != "" && !filepath.IsLocal(q.Orig) {
 		return nil, apperr.BadRequest("bad path")
 	}
+	if q.Untracked && q.HideIgnored && git.IsIgnored(repo, q.Path) { // --no-index would print any file, .env included
+		return nil, apperr.NotFound("file not found")
+	}
 	args, err := diffArgs(repo, q)
 	if err != nil {
 		return nil, err
 	}
-	out, err := git.Run(repo, args...)
+	out, err := git.RunLimit(repo, MaxDiff, args...)
+	if errors.Is(err, git.ErrTooLarge) {
+		return nil, apperr.TooLarge("diff larger than 10MB")
+	}
 	var ee *exec.ExitError
 	if err != nil && !(q.Untracked && errors.As(err, &ee) && ee.ExitCode() == 1) { // --no-index exits 1 when files differ
 		return nil, err

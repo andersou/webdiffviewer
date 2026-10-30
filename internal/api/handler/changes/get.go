@@ -37,6 +37,7 @@ func (rt *Router) getDiff(w http.ResponseWriter, r *http.Request) {
 		Base:         q.Get("base"),
 		WithWorktree: q.Get("wt") == "1",
 		Staged:       q.Get("staged") == "1",
+		HideIgnored:  rt.ws.CheckIgnore(),
 	})
 	if err != nil {
 		helpers.Fail(w, err)

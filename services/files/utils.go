@@ -1,6 +1,7 @@
 package files
 
 import (
+	"errors"
 	"io"
 	"os"
 
@@ -9,8 +10,11 @@ import (
 )
 
 // read loads up to MaxSize+1 bytes, so Read can tell a too-large file apart.
-func read(repo, path, rev string) ([]byte, error) {
+func read(repo, path, rev string, hideIgnored bool) ([]byte, error) {
 	if rev == "" {
+		if hideIgnored && git.IsIgnored(repo, path) { // --check-ignore: gitignored files (.env…) stay hidden
+			return nil, apperr.NotFound("file not found")
+		}
 		f, err := os.OpenInRoot(repo, path) // refuses symlinks that escape the repo
 		if err != nil {
 			return nil, apperr.NotFound(err.Error())
@@ -29,7 +33,10 @@ func read(repo, path, rev string) ([]byte, error) {
 	if rev == ":" {
 		sep = ""
 	}
-	buf, err := git.Run(repo, "show", rev+sep+path)
+	buf, err := git.RunLimit(repo, MaxSize, "show", rev+sep+path)
+	if errors.Is(err, git.ErrTooLarge) {
+		return nil, apperr.TooLarge("file larger than 5MB")
+	}
 	if err != nil {
 		return nil, apperr.NotFound("file not in " + rev)
 	}
