@@ -17,10 +17,18 @@ article.markdown-body { max-width: 980px; margin: 0 auto; padding: 32px 45px 64p
 .markdown-body hr.footnotes-sep { display: none; } /* github css already borders .footnotes */
 .markdown-body .katex-display { overflow-x: auto; overflow-y: hidden; }
 
-.frontmatter { margin-bottom: 24px; font-size: 13px; }
+/* long unbroken values (URLs, hashes) wrap anywhere; if keys still don't fit, only this box scrolls */
+.frontmatter { margin-bottom: 24px; font-size: 13px; max-width: 100%; overflow-x: auto; }
+.markdown-body table.fm td { overflow-wrap: anywhere; }
 .markdown-body .frontmatter table.fm, .markdown-body table.fm table.fm { display: table; width: 100%; margin: 0; }
-.markdown-body table.fm th { text-align: left; vertical-align: top; white-space: nowrap; width: 1%; }
+.markdown-body table.fm th { text-align: left; vertical-align: top; overflow-wrap: anywhere; }
 .markdown-body table.fm td { vertical-align: top; }
+/* narrow screens: stack each key above its value instead of squeezing two columns */
+@media (width < 48rem) {
+  .markdown-body table.fm, .markdown-body table.fm tbody, .markdown-body table.fm tr, .markdown-body table.fm th, .markdown-body table.fm td { display: block; width: auto; }
+  .markdown-body table.fm th { border-bottom: 0; padding-bottom: 0; }
+  .markdown-body table.fm td { border-top: 0; }
+}
 .markdown-body ul.fm-list { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; padding: 0; list-style: none; }
 .markdown-body .fm-list li { margin: 0; background: rgba(127, 127, 127, 0.15); border-radius: 10px; padding: 0 8px; }
 .markdown-body .fm-list li + li { margin-top: 0; }
