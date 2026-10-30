@@ -36,18 +36,19 @@ const rootBtn = css({
   _hover: { bg: 'ui.raisedHover' },
 })
 const section = css({ borderBottom: '1px solid token(colors.ui.border)', pb: '4px', maxH: '35%', overflow: 'auto' })
-// refresh: easy to hit with a mouse, 40px touch target on phones
+// refresh: icon at the heading's text size; the clickable area stays larger (negative margins keep the row height)
 const iconBtn = css({
   display: 'grid',
   placeItems: 'center',
-  w: '24px',
-  h: '24px',
+  w: '20px',
+  h: '20px',
   my: '-4px',
+  mr: '-5px',
   borderRadius: '4px',
-  '& svg': { w: '15px', h: '15px' },
-  color: 'ui.fg',
-  _hover: { bg: 'ui.hover' },
-  mdDown: { w: '40px', h: '40px', my: '-8px', mr: '-8px', '& svg': { w: '22px', h: '22px' } },
+  color: 'ui.heading',
+  '& svg': { w: '1.1em', h: '1.1em' },
+  _hover: { bg: 'ui.hover', color: 'ui.fg' },
+  mdDown: { w: '36px', h: '36px', my: '-12px', mr: '-12px' },
 })
 const branchBox = css({ px: '10px', py: '6px', '& label': { display: 'flex', my: '3px', gap: '8px', alignItems: 'center' } })
 const grow = css({ flex: 1, mdDown: { fontSize: '16px' } }) // < 16px makes iOS zoom on focus
