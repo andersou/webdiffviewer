@@ -1,0 +1,40 @@
+/* Tweaks for markdown preview HTML (markdown-it, KaTeX, mermaid). Deliberately outside Panda's
+   @layers: github-markdown-css is unlayered, and layered rules would always lose to it. */
+/* article.* outranks github's own `.markdown-body { margin: 0 }`, which is injected later */
+article.markdown-body { max-width: 980px; margin: 0 auto; padding: 32px 45px 64px; }
+@media (width < 48rem) { article.markdown-body { padding: 16px 14px 40px; } }
+
+/* Panda's preflight strips list markers and makes img/svg block-level (would break KaTeX glyphs) */
+.markdown-body ul, .markdown-body ol { list-style: revert; }
+.markdown-body img, .markdown-body svg { display: revert; vertical-align: revert; }
+.markdown-body .contains-task-list, .markdown-body .task-list-item { list-style: none; }
+
+.markdown-body pre.mermaid, .markdown-body .graphviz { background: none; text-align: center; overflow: auto; }
+.markdown-body pre.mermaid svg, .markdown-body .graphviz svg { display: inline-block; max-width: 100%; height: auto; }
+/* tokyo-night paints its own code box; drop the github one around it */
+.markdown-body pre:has(> code.hljs) { padding: 0; background: transparent; }
+.markdown-body.markdown-body pre code.hljs { display: block; padding: 14px 16px; border-radius: 6px; overflow-x: auto; }
+.markdown-body hr.footnotes-sep { display: none; } /* github css already borders .footnotes */
+.markdown-body .katex-display { overflow-x: auto; overflow-y: hidden; }
+
+.frontmatter { margin-bottom: 24px; font-size: 13px; }
+.markdown-body .frontmatter table.fm, .markdown-body table.fm table.fm { display: table; width: 100%; margin: 0; }
+.markdown-body table.fm th { text-align: left; vertical-align: top; white-space: nowrap; width: 1%; }
+.markdown-body table.fm td { vertical-align: top; }
+.markdown-body ul.fm-list { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.markdown-body .fm-list li { margin: 0; background: rgba(127, 127, 127, 0.15); border-radius: 10px; padding: 0 8px; }
+.markdown-body .fm-list li + li { margin-top: 0; }
+.fm-null { opacity: 0.6; font-style: italic; }
+.fm-error { color: #d1242f; margin-bottom: 6px; }
+
+/* MPE/python-markdown admonitions; mid-tone colors read on light and dark themes */
+.markdown-body .admonition { --adm: #4493f8; margin-bottom: 16px; padding: 8px 16px; border-left: 0.25em solid var(--adm); background: rgba(127, 127, 127, 0.07); border-radius: 0 6px 6px 0; }
+.markdown-body .admonition > :last-child { margin-bottom: 0; }
+.markdown-body .admonition-title { font-weight: 600; color: var(--adm); margin-bottom: 4px; text-transform: capitalize; }
+.markdown-body details.admonition > summary { cursor: pointer; margin-bottom: 0; }
+.markdown-body details.admonition[open] > summary { margin-bottom: 4px; }
+.markdown-body .admonition.tip, .markdown-body .admonition.success { --adm: #2da44e; }
+.markdown-body .admonition.warning, .markdown-body .admonition.question { --adm: #d29922; }
+.markdown-body .admonition.danger, .markdown-body .admonition.failure, .markdown-body .admonition.bug { --adm: #e5534b; }
+.markdown-body .admonition.example { --adm: #986ee2; }
+.markdown-body .admonition.quote { --adm: #8b949e; }
