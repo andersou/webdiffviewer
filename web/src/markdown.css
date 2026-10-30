@@ -46,3 +46,6 @@ article.markdown-body { max-width: 980px; margin: 0 auto; padding: 32px 45px 64p
 .markdown-body .admonition.danger, .markdown-body .admonition.failure, .markdown-body .admonition.bug { --adm: #e5534b; }
 .markdown-body .admonition.example { --adm: #986ee2; }
 .markdown-body .admonition.quote { --adm: #8b949e; }
+
+/* TOC jumps leave a little room above the heading */
+.markdown-body :is(h1, h2, h3, h4)[id] { scroll-margin-top: 16px; }

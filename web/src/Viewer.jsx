@@ -1,4 +1,4 @@
-import { createEffect, createResource, createSignal, For, Show } from 'solid-js'
+import { createEffect, createResource, createSignal, For, onCleanup, Show } from 'solid-js'
 import { css, cva } from '../styled-system/css'
 import { text } from './api'
 import { highlight } from './highlight'
@@ -57,6 +57,21 @@ const rev = (s) => (s.kind !== 'diff' ? '' : s.staged ? ':' : s.base && !s.wt ? 
 const themeSel = css({ float: 'right', ml: '10px', px: '4px', py: '1px', bg: 'ui.input', color: 'ui.fg', border: '1px solid token(colors.ui.borderStrong)', borderRadius: '3px' })
 const errBox = css({ m: 'auto', p: '20px', color: 'ui.error', whiteSpace: 'pre-wrap' })
 const mdScroll = css({ flex: 1, overflow: 'auto' })
+const mdWrap = css({ flex: 1, minH: 0, display: 'flex', position: 'relative' })
+// table of contents beside the preview; on phones it overlays the text
+const tocPanel = css({
+  w: '260px',
+  flex: 'none',
+  overflow: 'auto',
+  bg: 'ui.panel',
+  borderLeft: '1px solid token(colors.ui.border)',
+  py: '8px',
+  mdDown: { position: 'absolute', top: 0, right: 0, bottom: 0, w: '80%', zIndex: 5, boxShadow: '-8px 0 24px rgba(0, 0, 0, 0.5)' },
+})
+const tocItem = cva({
+  base: { display: 'block', w: '100%', py: '3px', pr: '10px', textAlign: 'left', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', _hover: { bg: 'ui.hover' }, mdDown: { py: '7px', fontSize: '14px' } },
+  variants: { active: { true: { color: 'ui.link', bg: 'ui.selected', _hover: { bg: 'ui.selected' } } } },
+})
 
 const CHUNK = 200 // rows per block; off-screen blocks are skipped by content-visibility
 
@@ -133,7 +148,38 @@ export default function Viewer(props) {
     () => preview() && [props.repo, props.sel.path, props.tick, theme(), rev(props.sel)],
     async ([repo, path, , t, r]) => ({ repo, path, dark: THEMES[t].dark, html: await renderMarkdown(await text('file', { repo, path, rev: r })) }),
   )
-  let mdEl
+  let mdEl, mdScrollEl
+  const [showToc, setShowToc] = createSignal(localStorage.getItem('mdToc') === '1')
+  const [headings, setHeadings] = createSignal([])
+  const [activeId, setActiveId] = createSignal('')
+  const toggleToc = () => {
+    localStorage.setItem('mdToc', showToc() ? '0' : '1')
+    setShowToc(!showToc())
+  }
+  const jump = (id) => {
+    mdEl.querySelector(`[id="${CSS.escape(id)}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    if (matchMedia('(width < 48rem)').matches) setShowToc(false) // the overlay covers the text on phones
+  }
+  // scrollspy: the active heading is the last one above the top of the preview
+  let frame
+  const spy = () => {
+    cancelAnimationFrame(frame)
+    frame = requestAnimationFrame(() => {
+      const top = mdScrollEl.getBoundingClientRect().top + 80
+      let id = headings()[0]?.id || ''
+      for (const h of headings()) {
+        const el = mdEl.querySelector(`[id="${CSS.escape(h.id)}"]`)
+        if (el && el.getBoundingClientRect().top <= top) id = h.id
+        else if (el) break
+      }
+      // at the very bottom the last headings can never reach the top: pick the last one
+      const sc = mdScrollEl
+      if (sc.scrollTop > 0 && sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 2) id = headings().at(-1)?.id || id
+      setActiveId(id)
+    })
+  }
+  onCleanup(() => cancelAnimationFrame(frame))
+
   createEffect(() => {
     const r = md.latest
     if (!r || !mdEl) return
@@ -155,6 +201,8 @@ export default function Viewer(props) {
         a.rel = 'noopener noreferrer'
       }
     }
+    setHeadings([...mdEl.querySelectorAll('h1[id], h2[id], h3[id], h4[id]')].map((h) => ({ id: h.id, text: h.textContent, level: +h.tagName[1] })))
+    spy()
     renderDiagrams(mdEl, r.dark)
   })
 
@@ -196,6 +244,13 @@ export default function Viewer(props) {
             <For each={Object.entries(THEMES)}>{([k, t]) => <option value={k}>{t.label}</option>}</For>
           </select>
         </Show>
+        <Show when={preview() && headings().length}>
+          <span class={seg}>
+            <button class={segBtn({ active: showToc() })} aria-pressed={showToc()} aria-controls="md-toc" title="Table of contents" onClick={toggleToc}>
+              TOC
+            </button>
+          </span>
+        </Show>
         <span>{props.sel.path}</span>
         <Show when={props.sel.orig}>
           <span class={muted}> ← {props.sel.orig}</span>
@@ -206,8 +261,27 @@ export default function Viewer(props) {
         when={!preview()}
         fallback={
           <Show when={!md.error} fallback={<div class={errBox}>{md.error?.message}</div>}>
-            <div class={mdScroll} style={{ background: meta().bg }}>
-              <article class="markdown-body" ref={mdEl} />
+            <div class={mdWrap}>
+              <div class={mdScroll} ref={mdScrollEl} style={{ background: meta().bg }} onScroll={spy}>
+                <article class="markdown-body" ref={mdEl} />
+              </div>
+              <Show when={showToc() && headings().length}>
+                <nav id="md-toc" class={tocPanel} aria-label="Table of contents">
+                  <For each={headings()}>
+                    {(h) => (
+                      <button
+                        class={tocItem({ active: activeId() === h.id })}
+                        style={{ 'padding-left': `${(h.level - 1) * 12 + 14}px` }}
+                        aria-current={activeId() === h.id ? 'location' : undefined}
+                        title={h.text}
+                        onClick={() => jump(h.id)}
+                      >
+                        {h.text}
+                      </button>
+                    )}
+                  </For>
+                </nav>
+              </Show>
             </div>
           </Show>
         }

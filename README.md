@@ -19,6 +19,7 @@ Rode `webdiffviewer` dentro de qualquer pasta e abra o navegador: ele encontra o
   - diagramas mermaid e Graphviz (```` ```dot ````);
   - temas GitHub Light (padrão), Dark e Dark Dimmed;
   - imagens relativas carregam do repo, e links relativos abrem dentro do visualizador.
+  - botão **TOC** com os títulos do documento ao lado do preview (por cima do texto no celular), destacando a seção visível.
 - **Outros repos (`-parent-dir`):** o botão 📁 e o atalho **Ctrl/⌘+K** abrem um seletor com busca fuzzy dos repos dessa pasta. O repo aberto fica na URL (`?root=`), então cada aba pode olhar um repo diferente.
 - **Responsivo:** em telas de até 768px mostra a lista ou o arquivo, com o botão ← para voltar.
 - **Atualização:** recarrega ao focar a janela ou no botão ⟳.
