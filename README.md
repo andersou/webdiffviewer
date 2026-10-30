@@ -1,106 +1,133 @@
 # webdiffviewer
 
-Visualizador web de diffs git, no estilo do painel Source Control do VS Code. Backend em Go, interface em SolidJS, tudo num único binário.
+A git diff viewer for the browser, in the style of VS Code's Source Control panel. The backend is Go and the UI is SolidJS, shipped as a single binary.
 
-Rode `webdiffviewer` dentro de qualquer pasta e abra o navegador: ele encontra o repositório e os submodules, mostra branches, worktrees, a árvore de arquivos e a árvore de alterações, com diff colorido e preview de Markdown no estilo do [Markdown Preview Enhanced](https://github.com/shd101wyy/vscode-markdown-preview-enhanced).
+Run `webdiffviewer` in any folder and open your browser. It finds the repository and its submodules and shows branches, worktrees, the file tree, the changes tree and the commit graph, with syntax-highlighted diffs and a markdown preview modeled on [Markdown Preview Enhanced](https://github.com/shd101wyy/vscode-markdown-preview-enhanced).
 
-## Recursos
+![Changes tab with a syntax-highlighted diff](docs/screenshots/diff.png)
 
-- **Repositórios:** o repo que contém a pasta e todos os repos e submodules abaixo dela (até 6 níveis; ignora `node_modules` e pastas ocultas), cada um com seus worktrees.
-- **Branches:** troca de branch com `git switch`. Escolher uma branch remota cria a branch local de acompanhamento.
-- **Changes:** alterações staged e não staged, em árvore, com as letras de status (M, A, D, R, U).
-- **Explorer:** árvore de arquivos rastreados e não rastreados, com o status de cada um.
-- **Ícones:** pastas e arquivos com os ícones do [Material Icon Theme](https://github.com/material-extensions/vscode-material-icon-theme) (MIT), resolvidos como no VS Code. O navegador baixa só os ícones que aparecem na tela.
-- **Commits:** histórico com grafo de branches e merges, e badges de branch e tag. Mostra a branch atual, ou todas com **All branches**, de 300 em 300 commits. Clicar num commit mostra a mensagem, o autor e os arquivos alterados; clicar num arquivo abre o diff daquele commit (merges são comparados com o primeiro pai).
-- **Base:** diff contra outra branch, a partir do merge-base, como num pull request. O switch **Working tree** inclui alterações não commitadas e arquivos untracked (com **•** nos arquivos que têm alterações locais). Desligado, mostra só os commits da branch.
-- **Visualização:** **Diff | File | Preview** na barra superior. *File* mostra o arquivo inteiro na versão certa: a do index para alterações staged, a do `HEAD` numa comparação sem working tree, e a da pasta nos outros casos.
-- **Syntax highlight:** highlight.js com o tema tokyo-night, em arquivos e diffs de até 512KB.
-- **Preview de Markdown:** markdown-it com os mesmos plugins do MPE:
-  - frontmatter YAML em tabela, sumário com `[TOC]`, notas de rodapé, emoji, sub/sup, `==mark==`, abreviações, listas de definição e checklists;
-  - fórmulas KaTeX (`$...$` e `$$...$$`), alertas do GitHub (`> [!NOTE]`) e admonitions (`!!! tip`, `???` recolhível);
-  - diagramas mermaid e Graphviz (```` ```dot ````);
-  - temas GitHub Light (padrão), Dark e Dark Dimmed;
-  - imagens relativas carregam do repo, e links relativos abrem dentro do visualizador.
-  - botão **TOC** com os títulos do documento ao lado do preview (por cima do texto no celular), destacando a seção visível.
-- **Outros repos (`-parent-dir`):** o botão 📁 e o atalho **Ctrl/⌘+K** abrem um seletor com busca fuzzy dos repos dessa pasta. O repo aberto fica na URL (`?root=`), então cada aba pode olhar um repo diferente.
-- **Responsivo:** em telas de até 768px mostra a lista ou o arquivo, com o botão ← para voltar.
-- **Atualização:** recarrega ao focar a janela ou no botão ⟳.
+## Screenshots
 
-## Instalação
+**Markdown preview:** YAML frontmatter as a table, table of contents, alerts, mermaid diagrams, KaTeX math. It has light and dark themes.
 
-Baixe o binário da sua plataforma em [Releases](https://github.com/andersou/webdiffviewer/releases): Linux, Windows e macOS, em x64 e arm64. Cada release traz o `SHA256SUMS` para conferir os arquivos. Só é preciso ter o `git` instalado.
+| GitHub Light | GitHub Dark |
+|---|---|
+| ![Markdown preview, light theme, with frontmatter table and TOC](docs/screenshots/markdown.png) | ![Markdown preview, dark theme, with mermaid diagram and KaTeX](docs/screenshots/markdown-dark.png) |
+
+**Commit graph:** branches, merges and tags. Opening a commit shows its message and changed files, and each file opens as a diff at that commit.
+
+![Commits tab with the branch graph and a merge commit open](docs/screenshots/commits.png)
+
+**Repository picker:** with `-parent-dir`, Ctrl/⌘+K opens a fuzzy search over every repo in that folder.
+
+![Repository picker with fuzzy search](docs/screenshots/picker.png)
+
+**Mobile:** on a phone you see the list or the open file. **←** goes back to the list, and swiping right-to-left on the list returns to the file.
+
+<p>
+  <img src="docs/screenshots/mobile-list.png" alt="Changes list on a phone" width="260" />
+  <img src="docs/screenshots/mobile-diff.png" alt="Diff on a phone" width="260" />
+</p>
+
+## Features
+
+- **Repositories:** the repo that contains the folder, plus every repo and submodule below it, with their worktrees. The scan goes 6 levels deep and skips `node_modules` and hidden folders.
+- **Branches:** switch branches with `git switch`. Picking a remote branch creates the local tracking branch.
+- **Changes:** staged and unstaged changes as a tree, with status letters (M, A, D, R, U).
+- **Explorer:** the tree of tracked and untracked files, with each file's status.
+- **Commits:** history with a branch/merge graph and branch/tag badges, for the current branch or **All branches**, 300 commits at a time. Merges are diffed against their first parent. Details are cached and prefetched on hover, so a commit opens almost instantly.
+- **Base:** diff against another branch from the merge-base, like a pull request. The **Working tree** switch adds uncommitted and untracked changes; a **•** marks files with local edits. Turn it off to see only the branch's commits.
+- **Views:** **Diff | File | Preview** in the top bar. *File* shows the whole file at the right version: the index for staged changes, `HEAD` for a branch comparison without the working tree, the commit in the Commits tab, otherwise the file on disk. Line-number columns that no row uses are hidden.
+- **Syntax highlighting:** highlight.js with the tokyo-night theme, for files and diffs up to 512KB.
+- **Icons:** [Material Icon Theme](https://github.com/material-extensions/vscode-material-icon-theme) (MIT) icons for files and folders, resolved the way VS Code does. The browser downloads only the icons on screen.
+- **Markdown preview:** markdown-it with the same plugins as MPE:
+  - YAML frontmatter as a table, `[TOC]`, footnotes, emoji, sub/sup, `==mark==`, abbreviations, definition lists and task lists;
+  - KaTeX math (`$...$` and `$$...$$`), GitHub alerts (`> [!NOTE]`) and admonitions (`!!! tip`, collapsible `???`);
+  - mermaid and Graphviz (```` ```dot ````) diagrams;
+  - GitHub Light (default), Dark and Dark Dimmed themes;
+  - relative images load from the repo, and relative links open inside the viewer;
+  - a **TOC** panel next to the preview (an overlay on phones) that highlights the visible section.
+- **Other repositories (`-parent-dir`):** the 📁 button and **Ctrl/⌘+K** open the fuzzy picker. The open repo lives in the URL (`?root=`), so each tab can show a different one.
+- **Responsive:** up to 768px wide, the UI shows one pane at a time.
+- **Refresh:** reloads when the window gains focus, or with the refresh button.
+
+## Install
+
+Download the binary for your platform from [Releases](https://github.com/andersou/webdiffviewer/releases): Linux, Windows and macOS, each for x64 and arm64. Every release includes `SHA256SUMS` to verify the downloads. You only need `git` installed.
 
 ```sh
-# exemplo: macOS Apple Silicon
+# example: macOS on Apple Silicon
 curl -LO https://github.com/andersou/webdiffviewer/releases/latest/download/SHA256SUMS
-# baixe webdiffviewer-<versão>-darwin-arm64.tar.gz da página do release, depois:
+# download webdiffviewer-<version>-darwin-arm64.tar.gz from the release page, then:
 shasum -a 256 -c SHA256SUMS --ignore-missing
 tar -xzf webdiffviewer-*-darwin-arm64.tar.gz && ./webdiffviewer -version
 ```
 
-### Compilar do código
+### Build from source
 
-Requer Go 1.24+, Node 20+ e git.
+Requires Go 1.24+, Node 20+ and git.
 
 ```sh
 git clone https://github.com/andersou/webdiffviewer.git
 cd webdiffviewer
-make build      # instala dependências, gera o frontend e compila ./webdiffviewer
-make install    # opcional: copia para $GOPATH/bin
+make build      # installs dependencies, builds the frontend, compiles ./webdiffviewer
+make install    # optional: copies it to $GOPATH/bin
 ```
 
-O frontend é embutido no binário (`go:embed`). Por isso o `go build` precisa de `web/dist`, que só existe depois do `make build`.
+The frontend is embedded in the binary (`go:embed`), so `go build` needs `web/dist`, which only exists after `make build`.
 
-## Uso
+## Usage
 
 ```sh
-cd /algum/repo
+cd /some/repo
 webdiffviewer                                # http://127.0.0.1:8080
-webdiffviewer -port 9000 ../outra-pasta      # outra pasta e porta
-webdiffviewer -parent-dir ~/git              # Ctrl/⌘+K abre qualquer repo de ~/git
-webdiffviewer -host 0.0.0.0                  # acessível na rede (veja Segurança)
+webdiffviewer -port 9000 ../other-folder     # another folder and port
+webdiffviewer -parent-dir ~/git              # Ctrl/⌘+K opens any repo in ~/git
+webdiffviewer -host 0.0.0.0                  # reachable on the network (see Security)
 ```
 
-| Flag | Padrão | Descrição |
+| Flag | Default | Description |
 |---|---|---|
-| `-host` | `127.0.0.1` | Endereço em que o servidor escuta |
-| `-port` | `8080` | Porta |
-| `-parent-dir` | — | Pasta cujos repos podem ser abertos pelo seletor |
-| `-version` | — | Mostra a versão e sai |
-| `[dir]` | `.` | Pasta inicial |
+| `-host` | `127.0.0.1` | Address to listen on |
+| `-port` | `8080` | Port |
+| `-parent-dir` | — | Folder whose repos the picker can open |
+| `-version` | — | Print the version and exit |
+| `[dir]` | `.` | Folder to start in |
 
-## Segurança
+## Security
 
-- Por padrão o servidor escuta só em loopback e recusa requisições com outro `Host` (proteção contra DNS rebinding).
-- **Não há autenticação.** Com `-host 0.0.0.0`, qualquer pessoa na rede consegue ler os arquivos e trocar de branch. Junto com `-parent-dir`, isso vale para todos os repos dessa pasta.
-- A API recusa caminhos fora do repo, tanto com `..` quanto por symlink. O `-parent-dir` também recusa pastas fora dele.
-- O HTML do Markdown passa pelo DOMPurify, e os arquivos crus (`/api/raw`) são servidos com `Content-Security-Policy: sandbox`.
-- A troca de branch exige JSON no corpo da requisição, então outro site aberto no navegador não consegue dispará-la.
+- By default the server listens on loopback only and rejects requests with any other `Host` header, which blocks DNS rebinding.
+- **There is no authentication.** With `-host 0.0.0.0`, anyone on the network can read the files and switch branches. With `-parent-dir`, that applies to every repo in that folder.
+- The API rejects paths that leave the repo, through `..` or symlinks. `-parent-dir` also rejects folders outside it.
+- Only hex commit ids are accepted, so refs and options can't be injected into git commands.
+- Markdown HTML is sanitized with DOMPurify. Raw files (`/api/raw`) are served with `Content-Security-Policy: sandbox`.
+- Branch switching requires a JSON body, so another website open in the browser can't trigger it.
 
-## Desenvolvimento
+## Development
 
 ```sh
-go run . &                 # API em :8080 (precisa de web/dist; rode make build uma vez)
-cd web && npm run dev      # Vite com hot reload; faz proxy de /api para :8080
-make test                  # testes Go + JS
+go run . &                 # API on :8080 (needs web/dist: run make build once)
+cd web && npm run dev      # Vite with hot reload; proxies /api to :8080
+make test                  # Go and JS tests
 ```
 
 ### Releases
 
-Os releases são automáticos, feitos pelo [semantic-release](https://github.com/semantic-release/semantic-release) a partir dos commits no formato [Conventional Commits](https://www.conventionalcommits.org/): `feat:` gera uma versão minor, `fix:` e `perf:` uma patch, e `!` ou `BREAKING CHANGE` uma major. Os outros tipos (`docs:`, `ci:`, `chore:`…) não geram release.
+Releases are automatic: [semantic-release](https://github.com/semantic-release/semantic-release) reads commit messages in the [Conventional Commits](https://www.conventionalcommits.org/) format. `feat:` makes a minor release, `fix:` and `perf:` a patch release, and `!` or `BREAKING CHANGE` a major release. Other types (`docs:`, `ci:`, `chore:`…) don't make a release.
 
-O workflow `.github/workflows/ci-release.yml`:
-1. testa o projeto e gera o frontend uma vez;
-2. compila e testa o binário em runners nativos para os 6 alvos, conferindo o `-version` de cada um;
-3. publica o release com os arquivos e o `SHA256SUMS`.
+The `.github/workflows/ci-release.yml` workflow:
+1. tests the project and builds the frontend once;
+2. builds and tests the binary on native runners for all 6 targets, checking each binary's `-version`;
+3. publishes the release with the archives and `SHA256SUMS`.
 
-Um push no branch `develop` gera pré-releases `-beta`.
+Pushing to `develop` publishes `-beta` pre-releases.
 
-Estrutura:
+### Layout
 
-- `main.go`: flags, rotas e proteção de `Host`.
-- `api.go`: handlers que chamam o `git` (status, diff, branches, worktrees, arquivos).
-- `web/src`: componentes Solid (`App`, `Tree`, `Viewer`, `Picker`).
-- `web/src/mdEngine.js`: o motor de Markdown.
-- Estilos: Panda CSS (`web/panda.config.ts` e `web/src/ui.js`). `web/src/markdown.css` ajusta o HTML gerado pelo Markdown.
-- Ícones: `npm install` copia os SVGs para `web/public/icons` (`web/scripts/copy-icons.js`); `web/src/iconRules.js` resolve o ícone de cada nome.
+- `main.go`: flags, routes, `Host` check and static file caching.
+- `api.go`: handlers that call `git` (status, diff, log, branches, worktrees, files).
+- `web/src`: Solid components (`App`, `Tree`, `Viewer`, `Commits`, `Picker`).
+- `web/src/graph.js`: commit graph layout. `web/src/mdEngine.js`: the markdown engine.
+- Styles: Panda CSS (`web/panda.config.ts` and `web/src/ui.js`). `web/src/markdown.css` adjusts the HTML generated from markdown.
+- Icons: `npm install` copies the SVGs to `web/public/icons` (`web/scripts/copy-icons.js`), and `web/src/iconRules.js` picks the icon for each name.
+- Screenshots in `docs/screenshots` come from a made-up demo repository.
