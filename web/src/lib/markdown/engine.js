@@ -1,8 +1,8 @@
 // Markdown engine modelled on Markdown Preview Enhanced (crossnote): markdown-it + the same plugin set.
-// Loaded lazily by markdown.js; returns unsanitized HTML.
+// Loaded lazily by render.js; returns unsanitized HTML. Code blocks are colored by the `code`
+// function passed to render (Shiki, prepared for this source's languages).
 import katex from '@vscode/markdown-it-katex'
 import tasks from '@hackmd/markdown-it-task-lists'
-import hljs from 'highlight.js/lib/common'
 import MarkdownIt from 'markdown-it'
 import abbr from 'markdown-it-abbr'
 import anchor from 'markdown-it-anchor'
@@ -20,8 +20,8 @@ import { esc, fmTable, splitFrontmatter } from './frontmatter.js'
 
 const DIAGRAMS = { mermaid: 'mermaid', dot: 'graphviz', graphviz: 'graphviz', viz: 'graphviz' }
 
-const highlightCode = (code, lang) =>
-  hljs.getLanguage(lang) ? `<pre><code class="hljs language-${esc(lang)}">${hljs.highlight(code, { language: lang, ignoreIllegals: true }).value}</code></pre>` : ''
+// set by render for the duration of one md.render call (markdown-it's highlight hook is synchronous)
+let highlightCode = () => ''
 
 // GitHub-style slugs, shared by heading ids and [TOC] links
 const slugify = (s) => s.trim().toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu, '').replace(/\s/g, '-')
@@ -50,7 +50,9 @@ const md = new MarkdownIt({
   .use(anchor, { slugify })
   .use(toc, { slugify, listType: 'ul' }) // [TOC] or [[toc]]
 
-export function render(src) {
+// render turns markdown into HTML; code(code, lang) returns a highlighted block or '' for plain.
+export function render(src, code = () => '') {
+  highlightCode = code
   const [yaml, body] = splitFrontmatter(src)
   let fm = ''
   if (yaml?.trim()) {

@@ -6,11 +6,12 @@ import { errorBox } from './ui/styles.js'
 import { renderDiagrams, renderMarkdown } from '../lib/markdown/render.js'
 import './MarkdownPreview.css'
 
-// preview themes; their CSS lives in themes.js and loads with the first preview
+// preview themes; their CSS lives in themes.js and loads with the first preview. `code` is the
+// Shiki theme for code blocks: Shiki has no light Tokyo Night, so the light preview uses GitHub's.
 export const THEMES = {
-  'github-light': { label: 'GitHub Light', bg: '#ffffff', dark: false },
-  'github-dark': { label: 'GitHub Dark', bg: '#0d1117', dark: true },
-  'github-dark-dimmed': { label: 'GitHub Dark Dimmed', bg: '#212830', dark: true },
+  'github-light': { label: 'GitHub Light', bg: '#ffffff', dark: false, code: 'github-light' },
+  'github-dark': { label: 'GitHub Dark', bg: '#0d1117', dark: true, code: 'tokyo-night' },
+  'github-dark-dimmed': { label: 'GitHub Dark Dimmed', bg: '#212830', dark: true, code: 'tokyo-night' },
 }
 
 const wrap = css({ flex: 1, minH: 0, display: 'flex', position: 'relative' })
@@ -45,7 +46,7 @@ export default function MarkdownPreview(props) {
       const src = await text('file', { repo, path, rev })
       const id = JSON.stringify([repo, path, t, rev])
       if (last?.id === id && last.src === src) return last.result
-      last = { id, src, result: { repo, path, dark: THEMES[t].dark, html: await renderMarkdown(src) } }
+      last = { id, src, result: { repo, path, dark: THEMES[t].dark, html: await renderMarkdown(src, THEMES[t].code) } }
       return last.result
     },
   )

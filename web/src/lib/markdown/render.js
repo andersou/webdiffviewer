@@ -1,3 +1,5 @@
+import { codeBlocks } from '../highlight/highlight.js'
+
 let engine
 const load = () =>
   (engine ??= Promise.all([import('./engine.js'), import('dompurify'), import('katex/dist/katex.min.css')]).then(([{ render }, { default: purify }]) => ({
@@ -5,10 +7,11 @@ const load = () =>
     purify,
   })))
 
-// repo markdown is untrusted: strip scripts/handlers before it touches the DOM
-export async function renderMarkdown(src) {
-  const { render, purify } = await load()
-  return purify.sanitize(render(src))
+// renderMarkdown renders src with code blocks colored in the Shiki theme codeTheme.
+// Repo markdown is untrusted: scripts and handlers are stripped before it touches the DOM.
+export async function renderMarkdown(src, codeTheme) {
+  const [{ render, purify }, code] = await Promise.all([load(), codeBlocks(src, codeTheme)])
+  return purify.sanitize(render(src, code))
 }
 
 let mermaid, viz

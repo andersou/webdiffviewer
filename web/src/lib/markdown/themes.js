@@ -1,19 +1,13 @@
-// Preview themes: GitHub markdown CSS + tokyo-night highlight.js CSS (light/dark to match), scoped to .markdown-body so the diff view keeps its own colors.
+// Preview themes: GitHub markdown CSS, injected on first use. Code blocks get their colors
+// inline from Shiki (see MarkdownPreview's THEMES[...].code).
 import dark from 'github-markdown-css/github-markdown-dark.css?inline'
 import dimmed from 'github-markdown-css/github-markdown-dark-dimmed.css?inline'
 import light from 'github-markdown-css/github-markdown-light.css?inline'
-import hlDark from 'highlight.js/styles/tokyo-night-dark.css?inline'
-import hlLight from 'highlight.js/styles/tokyo-night-light.css?inline'
 
-const CSS = {
-  'github-light': [light, hlLight],
-  'github-dark': [dark, hlDark],
-  'github-dark-dimmed': [dimmed, hlDark],
-}
+const CSS = { 'github-light': light, 'github-dark': dark, 'github-dark-dimmed': dimmed }
 
 let style
 export function applyTheme(name) {
-  const [css, hl] = CSS[name] ?? CSS['github-light']
   style ??= document.head.appendChild(document.createElement('style'))
-  style.textContent = `${css}\n.markdown-body { ${hl} }`
+  style.textContent = CSS[name] ?? CSS['github-light']
 }

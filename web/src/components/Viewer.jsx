@@ -6,8 +6,7 @@ import { empty, errorBox, muted } from './ui/styles.js'
 import { createStoredSignal } from '../hooks/createStoredSignal.js'
 import CodeView from './CodeView.jsx'
 import { parseDiff } from '../lib/git/diff.js'
-import { highlight } from '../lib/highlight.js'
-import 'highlight.js/styles/tokyo-night-dark.css'
+import { highlight } from '../lib/highlight/highlight.js'
 
 const head = css({
   px: '14px',

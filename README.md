@@ -38,7 +38,7 @@ Run `webdiffviewer` in any folder and open your browser. It finds the repository
 - **Commits:** history with a branch/merge graph and branch/tag badges, for the current branch or **All branches**, 300 commits at a time. Merges are diffed against their first parent. Details are cached and prefetched on hover, so a commit opens almost instantly.
 - **Base:** diff against another branch from the merge-base, like a pull request. The **Working tree** switch adds uncommitted and untracked changes; a **•** marks files with local edits. Turn it off to see only the branch's commits.
 - **Views:** **Diff | File | Preview** in the top bar. *File* shows the whole file at the right version: the index for staged changes, `HEAD` for a branch comparison without the working tree, the commit in the Commits tab, otherwise the file on disk. Line-number columns that no row uses are hidden.
-- **Syntax highlighting:** highlight.js with the tokyo-night theme, for files and diffs up to 512KB.
+- **Syntax highlighting:** [Shiki](https://shiki.style), with VS Code's own TextMate grammars (240+ languages, including Vue, Angular templates, Svelte, Astro and MDX) and the Tokyo Night theme, for files and diffs up to 512KB. Each grammar loads only when a file needs it.
 - **Icons:** [Material Icon Theme](https://github.com/material-extensions/vscode-material-icon-theme) (MIT) icons for files and folders, resolved the way VS Code does. The browser downloads only the icons on screen.
 - **Markdown preview:** markdown-it with the same plugins as MPE:
   - YAML frontmatter as a table, `[TOC]`, footnotes, emoji, sub/sup, `==mark==`, abbreviations, definition lists and task lists;
@@ -155,7 +155,7 @@ web/src/
     markdown/            markdown-it engine and plugins, rendering, themes, frontmatter, admonitions
     icons/               Material Icon Theme lookup
     utils/               fuzzy search, link resolution
-    highlight.js         syntax highlighting
+    highlight/           Shiki highlighting: file name -> language, lazy grammars and themes
 ```
 
 Tests sit next to the code they cover (`*_test.go`, `*.test.js`). Styles use Panda CSS (`web/panda.config.ts`); `web/src/components/MarkdownPreview.css` adjusts the HTML generated from markdown. `npm install` copies the icon SVGs to `web/public/icons` (`web/scripts/copy-icons.js`). Screenshots in `docs/screenshots` come from a made-up demo repository.

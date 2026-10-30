@@ -11,9 +11,10 @@ article.markdown-body { max-width: 980px; margin: 0 auto; padding: 32px 45px 64p
 
 .markdown-body pre.mermaid, .markdown-body .graphviz { background: none; text-align: center; overflow: auto; }
 .markdown-body pre.mermaid svg, .markdown-body .graphviz svg { display: inline-block; max-width: 100%; height: auto; }
-/* tokyo-night paints its own code box; drop the github one around it */
-.markdown-body pre:has(> code.hljs) { padding: 0; background: transparent; }
-.markdown-body.markdown-body pre code.hljs { display: block; padding: 14px 16px; border-radius: 6px; overflow-x: auto; }
+/* Shiki code blocks carry their theme's background inline; keep GitHub's box shape */
+.markdown-body pre.shiki { padding: 14px 16px; border-radius: 6px; overflow-x: auto; }
+/* github-light's code background is the page's white; use GitHub's usual code gray instead */
+.markdown-body pre.shiki.github-light { background-color: #f6f8fa !important; }
 .markdown-body hr.footnotes-sep { display: none; } /* github css already borders .footnotes */
 .markdown-body .katex-display { overflow-x: auto; overflow-y: hidden; }
 
