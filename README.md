@@ -27,6 +27,18 @@ Rode `webdiffviewer` dentro de qualquer pasta e abra o navegador: ele encontra o
 
 ## Instalação
 
+Baixe o binário da sua plataforma em [Releases](https://github.com/andersou/webdiffviewer/releases): Linux, Windows e macOS, em x64 e arm64. Cada release traz o `SHA256SUMS` para conferir os arquivos. Só é preciso ter o `git` instalado.
+
+```sh
+# exemplo: macOS Apple Silicon
+curl -LO https://github.com/andersou/webdiffviewer/releases/latest/download/SHA256SUMS
+# baixe webdiffviewer-<versão>-darwin-arm64.tar.gz da página do release, depois:
+shasum -a 256 -c SHA256SUMS --ignore-missing
+tar -xzf webdiffviewer-*-darwin-arm64.tar.gz && ./webdiffviewer -version
+```
+
+### Compilar do código
+
 Requer Go 1.24+, Node 20+ e git.
 
 ```sh
@@ -53,6 +65,7 @@ webdiffviewer -host 0.0.0.0                  # acessível na rede (veja Seguran�
 | `-host` | `127.0.0.1` | Endereço em que o servidor escuta |
 | `-port` | `8080` | Porta |
 | `-parent-dir` | — | Pasta cujos repos podem ser abertos pelo seletor |
+| `-version` | — | Mostra a versão e sai |
 | `[dir]` | `.` | Pasta inicial |
 
 ## Segurança
@@ -70,6 +83,17 @@ go run . &                 # API em :8080 (precisa de web/dist; rode make build 
 cd web && npm run dev      # Vite com hot reload; faz proxy de /api para :8080
 make test                  # testes Go + JS
 ```
+
+### Releases
+
+Os releases são automáticos, feitos pelo [semantic-release](https://github.com/semantic-release/semantic-release) a partir dos commits no formato [Conventional Commits](https://www.conventionalcommits.org/): `feat:` gera uma versão minor, `fix:` e `perf:` uma patch, e `!` ou `BREAKING CHANGE` uma major. Os outros tipos (`docs:`, `ci:`, `chore:`…) não geram release.
+
+O workflow `.github/workflows/ci-release.yml`:
+1. testa o projeto e gera o frontend uma vez;
+2. compila e testa o binário em runners nativos para os 6 alvos, conferindo o `-version` de cada um;
+3. publica o release com os arquivos e o `SHA256SUMS`.
+
+Um push no branch `develop` gera pré-releases `-beta`.
 
 Estrutura:
 
