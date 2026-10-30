@@ -95,11 +95,22 @@ export default function App() {
   // phones show one pane: the list, or the open file. "Back" only shows the list, so the file
   // stays open and a right-to-left swipe (or the button at the bottom) returns to it.
   const [showList, setShowList] = createSignal(true)
+  // On phones the file view gets its own browser history entry, so the system back gesture or
+  // button returns to the list (state intact) instead of leaving the page. Desktop shows both
+  // panes, so it doesn't touch history.
+  const narrow = () => matchMedia('(width < 48rem)').matches
+  const showFile = () => {
+    if (!showList()) return
+    setShowList(false)
+    if (narrow()) history.pushState({ wdvFile: true }, '')
+  }
+  const showListPane = () => (narrow() && history.state?.wdvFile ? history.back() : setShowList(true)) // back() lands in popstate
+  createWindowEvent('popstate', (e) => setShowList(!(e.state?.wdvFile && sel())))
   const open = (item) => {
     setSel(item)
-    setShowList(false)
+    showFile()
   }
-  const swipe = createSwipe(() => sel() && setShowList(false))
+  const swipe = createSwipe(() => sel() && showFile())
 
   const key = () => repo() && [repo(), tick()]
   const [branches] = createResource(key, ([r]) => json('branches', { repo: r }))
@@ -165,7 +176,7 @@ export default function App() {
           </Show>
         </div>
         <Show when={sel()}>
-          <button class={toFile} onClick={() => setShowList(false)}>
+          <button class={toFile} onClick={showFile}>
             <span class={name}>↩ {sel().path.split('/').pop()}</span>
             <span class={muted}>swipe ←</span>
           </button>
@@ -176,7 +187,7 @@ export default function App() {
         <Picker parent={cfg().parent} current={root() || cfg().base} onPick={openRoot} onClose={() => setPicker(false)} />
       </Show>
       <main class={main}>
-        <Viewer repo={repo()} sel={sel()} tick={tick()} onBack={() => setShowList(true)} onOpen={(path) => setSel({ kind: 'file', path, key: 'f:' + path })} />
+        <Viewer repo={repo()} sel={sel()} tick={tick()} onBack={showListPane} onOpen={(path) => setSel({ kind: 'file', path, key: 'f:' + path })} />
       </main>
     </div>
   )
