@@ -51,6 +51,8 @@ const iconBtn = css({
   _hover: { bg: 'ui.hover', color: 'ui.fg' },
   mdDown: { w: '36px', h: '36px', my: '-12px', mr: '-12px' },
 })
+// same width for both labels, so the Branch and Base selects line up
+const fieldLabel = css({ w: '46px', flex: 'none' })
 const branchBox = css({ px: '10px', py: '6px', '& label': { display: 'flex', my: '3px', gap: '8px', alignItems: 'center' } })
 const grow = css({ flex: 1, mdDown: { fontSize: '16px' } }) // < 16px makes iOS zoom on focus
 const cmp = css({ display: 'flex', gap: '10px', alignItems: 'center', '& > label:first-child': { flex: 1, minW: 0 } })
@@ -249,7 +251,7 @@ export default function App() {
           {(b) => (
             <section class={`${section} ${branchBox}`}>
               <label>
-                Branch
+                <span class={fieldLabel}>Branch</span>
                 <select class={`${select} ${grow}`} value={b().current} onChange={checkout}>
                   <Show when={!b().current}>
                     <option value="">(detached)</option>
@@ -264,7 +266,7 @@ export default function App() {
               </label>
               <div class={cmp}>
                 <label>
-                  Base
+                  <span class={fieldLabel}>Base</span>
                   <select class={`${select} ${grow}`} value={base()} onChange={(e) => setBase(e.target.value)}>
                     <option value="">Working tree (uncommitted)</option>
                     <optgroup label="Local">
