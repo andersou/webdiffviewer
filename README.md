@@ -11,6 +11,7 @@ Rode `webdiffviewer` dentro de qualquer pasta e abra o navegador: ele encontra o
 - **Changes:** alterações staged e não staged, em árvore, com as letras de status (M, A, D, R, U).
 - **Explorer:** árvore de arquivos rastreados e não rastreados, com o status de cada um.
 - **Ícones:** pastas e arquivos com os ícones do [Material Icon Theme](https://github.com/material-extensions/vscode-material-icon-theme) (MIT), resolvidos como no VS Code. O navegador baixa só os ícones que aparecem na tela.
+- **Commits:** histórico com grafo de branches e merges, e badges de branch e tag. Mostra a branch atual, ou todas com **All branches**, de 300 em 300 commits. Clicar num commit mostra a mensagem, o autor e os arquivos alterados; clicar num arquivo abre o diff daquele commit (merges são comparados com o primeiro pai).
 - **Compare:** diff contra outra branch, a partir do merge-base, como num pull request. O switch **Working tree** inclui alterações não commitadas e arquivos untracked (com **•** nos arquivos que têm alterações locais). Desligado, mostra só os commits da branch.
 - **Visualização:** **Diff | File | Preview** na barra superior. *File* mostra o arquivo inteiro na versão certa: a do index para alterações staged, a do `HEAD` numa comparação sem working tree, e a da pasta nos outros casos.
 - **Syntax highlight:** highlight.js com o tema tokyo-night, em arquivos e diffs de até 512KB.

@@ -1,6 +1,7 @@
 import { createEffect, createMemo, createResource, createSignal, For, onCleanup, Show } from 'solid-js'
 import { css, cva } from '../styled-system/css'
 import { api, json } from './api'
+import Commits from './Commits'
 import Picker from './Picker'
 import Tree from './Tree'
 import { error, heading, muted, name, row, select } from './ui'
@@ -292,6 +293,9 @@ export default function App() {
           <button class={tabBtn({ active: tab() === 'files' })} onClick={() => setTab('files')}>
             Explorer
           </button>
+          <button class={tabBtn({ active: tab() === 'commits' })} onClick={() => setTab('commits')}>
+            Commits
+          </button>
         </nav>
 
         <div class={treeBox}>
@@ -311,6 +315,9 @@ export default function App() {
           </Show>
           <Show when={tab() === 'files'}>
             <Tree items={fileItems()} selected={sel()?.key} onSelect={open} badge={(i) => statusByPath().get(i.path)} />
+          </Show>
+          <Show when={tab() === 'commits'}>
+            <Commits repo={repo()} tick={tick()} selected={sel()?.key} onSelect={open} />
           </Show>
           <Show when={status.error || files.error}>
             <div class={error}>{(status.error || files.error).message}</div>

@@ -81,3 +81,29 @@ func TestRootStaysInParent(t *testing.T) {
 		t.Fatal("picker disabled: other roots must be rejected")
 	}
 }
+
+func TestParseLog(t *testing.T) {
+	out := "aaa\x00bbb ccc\x00Ana\x00ana@x\x001700000000\x00HEAD -> main, tag: v1.0.0\x00merge: a, b | c\x00body\nline 2\n\x1e\n" +
+		"bbb\x00\x00Bo\x00bo@x\x001600000000\x00\x00root\x00\x1e\n"
+	got := parseLog(out)
+	want := []Commit{
+		{Hash: "aaa", Parents: []string{"bbb", "ccc"}, Author: "Ana", Email: "ana@x", Time: 1700000000, Refs: []string{"HEAD -> main", "tag: v1.0.0"}, Subject: "merge: a, b | c", Body: "body\nline 2"},
+		{Hash: "bbb", Parents: []string{}, Author: "Bo", Email: "bo@x", Time: 1600000000, Refs: []string{}, Subject: "root"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %#v", got)
+	}
+}
+
+func TestIsHash(t *testing.T) {
+	for _, ok := range []string{"abcd", "0123456789abcdef0123456789abcdef01234567"} {
+		if !isHash(ok) {
+			t.Errorf("%q should be a hash", ok)
+		}
+	}
+	for _, bad := range []string{"", "abc", "HEAD", "--output=x", "main", "ABCD", "abcd^1"} {
+		if isHash(bad) {
+			t.Errorf("%q should be rejected", bad)
+		}
+	}
+}

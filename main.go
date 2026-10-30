@@ -62,6 +62,8 @@ func main() {
 	mux.HandleFunc("GET /api/diff", s.withRepo(s.diff))
 	mux.HandleFunc("GET /api/file", s.withRepo(s.file))
 	mux.HandleFunc("GET /api/raw", s.withRepo(s.raw))
+	mux.HandleFunc("GET /api/log", s.withRepo(s.log))
+	mux.HandleFunc("GET /api/commit", s.withRepo(s.commit))
 	web, _ := fs.Sub(dist, "web/dist")
 	mux.Handle("/", cacheStatic(http.FileServerFS(web)))
 

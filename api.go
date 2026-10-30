@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -417,7 +418,18 @@ func (s *server) diff(w http.ResponseWriter, r *http.Request, repo string) {
 	}
 	args := []string{"-c", "core.quotepath=off", "diff", "--no-color", "--no-ext-diff"}
 	untracked := q.Get("untracked") == "1"
-	switch base := q.Get("base"); {
+	switch base, commit := q.Get("base"), q.Get("commit"); {
+	case commit != "":
+		parent, err := parentOf(repo, commit)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		args = append(args, "-M", parent, commit, "--")
+		if orig != "" {
+			args = append(args, orig)
+		}
+		args = append(args, path)
 	case untracked: // checked first: untracked files have no history, even in a branch comparison
 		args = append(args, "--no-index", "--", "/dev/null", path) // git special-cases /dev/null on every OS (os.DevNull is NUL on Windows)
 	case base != "":
@@ -471,18 +483,19 @@ func (s *server) file(w http.ResponseWriter, r *http.Request, repo string) {
 		}
 		defer f.Close()
 		buf, err = io.ReadAll(io.LimitReader(f, maxFile+1))
-	case "HEAD", ":":
+	default:
+		if rev != "HEAD" && rev != ":" && !isHash(rev) {
+			http.Error(w, "rev must be HEAD, : or a commit hash", http.StatusBadRequest)
+			return
+		}
 		sep := ":"
 		if rev == ":" {
 			sep = ""
 		}
 		if buf, err = git(repo, "show", rev+sep+q.Get("path")); err != nil {
-			http.Error(w, "not in "+map[string]string{"HEAD": "HEAD", ":": "the index"}[rev], http.StatusNotFound)
+			http.Error(w, "file not in "+rev, http.StatusNotFound)
 			return
 		}
-	default:
-		http.Error(w, "rev must be HEAD or :", http.StatusBadRequest)
-		return
 	}
 	switch {
 	case err != nil:
@@ -514,4 +527,106 @@ func (s *server) raw(w http.ResponseWriter, r *http.Request, repo string) {
 	w.Header().Set("Content-Security-Policy", "sandbox")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	http.ServeContent(w, r, st.Name(), st.ModTime(), f)
+}
+
+var hashRe = regexp.MustCompile(`^[0-9a-f]{4,64}$`)
+
+// isHash accepts abbreviated or full commit ids; anything else (refs, options) is rejected.
+func isHash(s string) bool { return hashRe.MatchString(s) }
+
+// parentOf returns the first parent of commit, or the empty tree for a root commit,
+// so `git diff <parent> <commit>` always shows what the commit introduced.
+func parentOf(repo, commit string) (string, error) {
+	if !isHash(commit) {
+		return "", errors.New("bad commit")
+	}
+	if out, err := git(repo, "rev-parse", "--verify", "-q", commit+"^1"); err == nil {
+		return strings.TrimSpace(string(out)), nil
+	}
+	if _, err := git(repo, "rev-parse", "--verify", "-q", commit+"^{commit}"); err != nil {
+		return "", errors.New("unknown commit")
+	}
+	out, err := git(repo, "hash-object", "-t", "tree", "/dev/null") // empty tree (sha1 or sha256 repos)
+	return strings.TrimSpace(string(out)), err
+}
+
+type Commit struct {
+	Hash    string   `json:"hash"`
+	Parents []string `json:"parents"`
+	Author  string   `json:"author"`
+	Email   string   `json:"email,omitempty"`
+	Time    int64    `json:"time"`
+	Refs    []string `json:"refs"`
+	Subject string   `json:"subject"`
+	Body    string   `json:"body,omitempty"`
+}
+
+// logFormat: fields split by NUL, records by RS (\x1e), so subjects/bodies may contain anything else.
+const logFormat = "%H%x00%P%x00%an%x00%ae%x00%at%x00%D%x00%s%x00%b%x1e"
+
+func parseLog(out string) []Commit {
+	list := []Commit{}
+	for _, rec := range strings.Split(out, "\x1e") {
+		f := strings.Split(strings.TrimLeft(rec, "\n"), "\x00")
+		if len(f) < 8 {
+			continue
+		}
+		c := Commit{Hash: f[0], Parents: strings.Fields(f[1]), Author: f[2], Email: f[3], Subject: f[6], Body: strings.TrimSpace(f[7]), Refs: []string{}}
+		fmt.Sscan(f[4], &c.Time)
+		for _, r := range strings.Split(f[5], ", ") {
+			if r = strings.TrimSpace(r); r != "" {
+				c.Refs = append(c.Refs, r)
+			}
+		}
+		list = append(list, c)
+	}
+	return list
+}
+
+// log lists commits for the Commits tab: HEAD's history, or every branch/tag with ?all=1.
+func (s *server) log(w http.ResponseWriter, r *http.Request, repo string) {
+	q := r.URL.Query()
+	var skip int
+	fmt.Sscan(q.Get("skip"), &skip)
+	args := []string{"log", "--topo-order", "-n", "300", "--skip", fmt.Sprint(max(skip, 0)), "--format=" + logFormat}
+	if q.Get("all") == "1" {
+		args = append(args, "--branches", "--remotes", "--tags")
+	}
+	args = append(args, "HEAD", "--")
+	out, err := git(repo, args...)
+	if err != nil && !strings.Contains(err.Error(), "does not have any commits") {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	list := parseLog(string(out))
+	for i := range list {
+		list[i].Body, list[i].Email = "", "" // details come from /api/commit
+	}
+	writeJSON(w, list)
+}
+
+// commit returns one commit's details and the files it changed (merges: against the first parent).
+func (s *server) commit(w http.ResponseWriter, r *http.Request, repo string) {
+	hash := r.URL.Query().Get("hash")
+	parent, err := parentOf(repo, hash)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	out, err := git(repo, "show", "-s", "--format="+logFormat, hash)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	info := parseLog(string(out))
+	if len(info) != 1 {
+		http.Error(w, "unknown commit", http.StatusNotFound)
+		return
+	}
+	files, err := git(repo, "diff", "--name-status", "-z", "-M", parent, hash)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, map[string]any{"commit": info[0], "files": parseNameStatus(string(files))})
 }

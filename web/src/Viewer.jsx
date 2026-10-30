@@ -51,9 +51,9 @@ const segBtn = cva({
 })
 const LABELS = { diff: 'Diff', file: 'File', preview: 'Preview' }
 
-// version shown by File/Preview: the index for staged changes, HEAD for a branch comparison
-// without the working tree, otherwise the file on disk
-const rev = (s) => (s.kind !== 'diff' ? '' : s.staged ? ':' : s.base && !s.wt ? 'HEAD' : '')
+// version shown by File/Preview: the commit itself in the Commits tab, the index for staged
+// changes, HEAD for a branch comparison without the working tree, otherwise the file on disk
+const rev = (s) => (s.kind !== 'diff' ? '' : s.commit || (s.staged ? ':' : s.base && !s.wt ? 'HEAD' : ''))
 const themeSel = css({ float: 'right', ml: '10px', px: '4px', py: '1px', bg: 'ui.input', color: 'ui.fg', border: '1px solid token(colors.ui.borderStrong)', borderRadius: '3px' })
 const errBox = css({ m: 'auto', p: '20px', color: 'ui.error', whiteSpace: 'pre-wrap' })
 const mdScroll = css({ flex: 1, overflow: 'auto' })
@@ -215,7 +215,7 @@ export default function Viewer(props) {
         await highlight(s.path, rows)
         return rows
       }
-      const src = await text('diff', { repo, path: s.path, orig: s.orig || '', base: s.base || '', wt: s.wt ? 1 : 0, staged: s.staged ? 1 : 0, untracked: s.untracked ? 1 : 0 })
+      const src = await text('diff', { repo, path: s.path, orig: s.orig || '', base: s.base || '', commit: s.commit || '', wt: s.wt ? 1 : 0, staged: s.staged ? 1 : 0, untracked: s.untracked ? 1 : 0 })
       const rows = parseDiff(src)
       // highlight each side as continuous code; context lines end up with the new side's tokens
       await highlight(s.path, rows.filter((r) => r.t === 'del' || r.t === 'ctx'))
@@ -255,7 +255,7 @@ export default function Viewer(props) {
         <Show when={props.sel.orig}>
           <span class={muted}> ← {props.sel.orig}</span>
         </Show>
-        <span class={muted}>{props.sel.kind === 'file' ? '' : props.sel.base ? ` (vs ${props.sel.base})` : props.sel.staged ? ' (staged)' : props.sel.untracked ? ' (untracked)' : ' (working tree)'}</span>
+        <span class={muted}>{props.sel.kind === 'file' ? '' : props.sel.commit ? ` (commit ${props.sel.commit.slice(0, 7)})` : props.sel.base ? ` (vs ${props.sel.base})` : props.sel.staged ? ' (staged)' : props.sel.untracked ? ' (untracked)' : ' (working tree)'}</span>
       </div>
       <Show
         when={!preview()}
