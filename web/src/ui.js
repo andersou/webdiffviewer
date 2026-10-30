@@ -34,6 +34,7 @@ export const heading = css({
   color: 'ui.heading',
   display: 'flex',
   justifyContent: 'space-between',
+  alignItems: 'center',
 })
 export const select = css({ minW: 0, bg: 'ui.input', color: 'ui.fg', border: '1px solid token(colors.ui.borderStrong)', borderRadius: '2px', p: '3px' })
 

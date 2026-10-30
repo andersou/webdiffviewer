@@ -10,6 +10,7 @@ Rode `webdiffviewer` dentro de qualquer pasta e abra o navegador: ele encontra o
 - **Branches:** troca de branch com `git switch`. Escolher uma branch remota cria a branch local de acompanhamento.
 - **Changes:** alterações staged e não staged, em árvore, com as letras de status (M, A, D, R, U).
 - **Explorer:** árvore de arquivos rastreados e não rastreados, com o status de cada um.
+- **Ícones:** pastas e arquivos com os ícones do [Material Icon Theme](https://github.com/material-extensions/vscode-material-icon-theme) (MIT), resolvidos como no VS Code. O navegador baixa só os ícones que aparecem na tela.
 - **Compare:** diff contra outra branch, a partir do merge-base, como num pull request. O switch **Working tree** inclui alterações não commitadas e arquivos untracked (com **•** nos arquivos que têm alterações locais). Desligado, mostra só os commits da branch.
 - **Visualização:** **Diff | File | Preview** na barra superior. *File* mostra o arquivo inteiro na versão certa: a do index para alterações staged, a do `HEAD` numa comparação sem working tree, e a da pasta nos outros casos.
 - **Syntax highlight:** highlight.js com o tema tokyo-night, em arquivos e diffs de até 512KB.
@@ -77,3 +78,4 @@ Estrutura:
 - `web/src`: componentes Solid (`App`, `Tree`, `Viewer`, `Picker`).
 - `web/src/mdEngine.js`: o motor de Markdown.
 - Estilos: Panda CSS (`web/panda.config.ts` e `web/src/ui.js`). `web/src/markdown.css` ajusta o HTML gerado pelo Markdown.
+- Ícones: `npm install` copia os SVGs para `web/public/icons` (`web/scripts/copy-icons.js`); `web/src/iconRules.js` resolve o ícone de cada nome.

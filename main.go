@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 //go:embed all:web/dist
@@ -53,11 +54,26 @@ func main() {
 	mux.HandleFunc("GET /api/file", s.withRepo(s.file))
 	mux.HandleFunc("GET /api/raw", s.withRepo(s.raw))
 	web, _ := fs.Sub(dist, "web/dist")
-	mux.Handle("/", http.FileServerFS(web))
+	mux.Handle("/", cacheStatic(http.FileServerFS(web)))
 
 	addr := net.JoinHostPort(*host, strconv.Itoa(*port))
 	log.Printf("webdiffviewer: %s -> http://%s", base, addr)
 	log.Fatal(http.ListenAndServe(addr, hostGuard(*host, mux)))
+}
+
+// cacheStatic lets browsers keep built assets: /assets/ names are content-hashed (never change),
+// /icons/ change only with a new release. embed.FS has no mod times, so without this every
+// visit would re-download them.
+func cacheStatic(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasPrefix(r.URL.Path, "/assets/"):
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		case strings.HasPrefix(r.URL.Path, "/icons/"):
+			w.Header().Set("Cache-Control", "public, max-age=86400")
+		}
+		h.ServeHTTP(w, r)
+	})
 }
 
 // realPath makes p absolute and resolves symlinks: git reports real paths (e.g. /private/var, not /var)

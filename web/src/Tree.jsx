@@ -1,9 +1,14 @@
-import { createMemo, For, Show } from 'solid-js'
+import { createMemo, createSignal, For, Show } from 'solid-js'
 import { createStore } from 'solid-js/store'
 import { css } from '../styled-system/css'
 import { badge, name, row } from './ui'
 
 const chev = css({ w: '10px', color: '#999' })
+const iconBox = css({ w: '16px', h: '16px', flex: 'none', '& img': { w: '16px', h: '16px' } })
+
+// icon map + SVG URLs load in the background; rows render without icons until then
+const [icons, setIcons] = createSignal()
+import('./icons').then(setIcons)
 
 // items: [{ path, ... }]; folders are derived from the paths and rendered lazily (only when expanded).
 function build(items) {
@@ -36,10 +41,13 @@ export default function Tree(props) {
       fallback={
         <button
           class={row({ selected: props.selected === p.node.item.key })}
-          style={{ 'padding-left': `${p.depth * 12 + 20}px` }}
+          style={{ 'padding-left': `${p.depth * 12 + 22}px` }}
           title={p.node.item.path}
           onClick={() => props.onSelect(p.node.item)}
         >
+          <span class={iconBox}>
+            <Show when={icons()}>{(m) => <img src={m().fileIcon(p.node.item.path)} alt="" />}</Show>
+          </span>
           <span class={name}>{p.node.name}</span>
           <Show when={props.badge?.(p.node.item)}>
             {(b) => <span class={badge({ s: b()[0] })}>{b()}</span>}
@@ -49,6 +57,9 @@ export default function Tree(props) {
     >
       <button class={row()} style={{ 'padding-left': `${p.depth * 12 + 6}px` }} onClick={() => setOpen(p.node.path, !isOpen(p.node.path))}>
         <span class={chev}>{isOpen(p.node.path) ? '▾' : '▸'}</span>
+        <span class={iconBox}>
+          <Show when={icons()}>{(m) => <img src={m().folderIcon(p.node.path, isOpen(p.node.path))} alt="" />}</Show>
+        </span>
         <span class={name}>{p.node.name}</span>
       </button>
       <Show when={isOpen(p.node.path)}>
