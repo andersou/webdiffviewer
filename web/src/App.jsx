@@ -264,7 +264,7 @@ export default function App() {
               </label>
               <div class={cmp}>
                 <label>
-                  Compare
+                  Base
                   <select class={`${select} ${grow}`} value={base()} onChange={(e) => setBase(e.target.value)}>
                     <option value="">Working tree (uncommitted)</option>
                     <optgroup label="Local">
