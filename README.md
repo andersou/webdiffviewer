@@ -2,7 +2,7 @@
 
 A git diff viewer for the browser, in the style of VS Code's Source Control panel. The backend is Go and the UI is SolidJS, shipped as a single binary.
 
-Run `webdiffviewer` in any folder and open your browser. It finds the repository and its submodules and shows branches, worktrees, the file tree, the changes tree and the commit graph, with syntax-highlighted diffs and a markdown preview modeled on [Markdown Preview Enhanced](https://github.com/shd101wyy/vscode-markdown-preview-enhanced).
+Run `webdiffviewer` in any folder and open your browser. It finds the repository and its submodules and shows branches, worktrees, the file tree, the changes tree, text search and the commit graph, with syntax-highlighted diffs and a markdown preview modeled on [Markdown Preview Enhanced](https://github.com/shd101wyy/vscode-markdown-preview-enhanced).
 
 ![Changes tab with a syntax-highlighted diff](docs/screenshots/diff.png)
 
@@ -18,7 +18,7 @@ Run `webdiffviewer` in any folder and open your browser. It finds the repository
 
 ![Commits tab with the branch graph and a merge commit open](docs/screenshots/commits.png)
 
-**Repository picker:** with `-parent-dir`, Ctrl/⌘+K opens a fuzzy search over every repo in that folder.
+**Repository picker:** with `-parent-dir`, Ctrl/⌘+K opens a fuzzy search over every repo in that folder. Ctrl/⌘+P opens files the same way (see Features).
 
 ![Repository picker with fuzzy search](docs/screenshots/picker.png)
 
@@ -31,10 +31,12 @@ Run `webdiffviewer` in any folder and open your browser. It finds the repository
 
 ## Features
 
-- **Repositories:** the repo that contains the folder, plus every repo and submodule below it, with their worktrees. The scan goes 6 levels deep and skips `node_modules` and hidden folders.
-- **Branches:** switch branches with `git switch`. Picking a remote branch creates the local tracking branch.
+- **Repositories:** the repo that contains the folder, plus every repo and submodule below it, with their worktrees. A submodule also lists its checkouts inside the superproject's worktrees. The scan goes 6 levels deep and skips `node_modules` and hidden folders. Picking a repo again brings back its last screen (base, viewed branch, tab, open file).
+- **Branches:** newest first, local and remote (only remotes that are configured). With **Checkout** on, picking a branch runs `git switch`; a remote branch creates the local tracking branch. With **Checkout** off, the branch is only viewed and the repo stays as it is: the Explorer, files, changes (against Base, or against the checked-out branch) and commits all read from it.
 - **Changes:** staged and unstaged changes as a tree, with status letters (M, A, D, R, U).
 - **Explorer:** the tree of tracked and untracked files, with each file's status.
+- **Search:** text search like VS Code's (`git grep`), with match case, whole word and regex, results grouped by file. A line opens the file scrolled to it. In a repo with submodules it searches them too; inside a submodule, only that submodule. With a viewed branch, it searches that branch.
+- **Quick open (Ctrl/⌘+P):** fuzzy search over the repo's changes (open as a diff) and files (open as the file), at the selected branch. Matches in the file name rank first.
 - **Commits:** history with a branch/merge graph and branch/tag badges, for the current branch or **All branches**, 300 commits at a time. Merges are diffed against their first parent. Details are cached and prefetched on hover, so a commit opens almost instantly.
 - **Base:** diff against another branch from the merge-base, like a pull request. The **Working tree** switch adds uncommitted and untracked changes; a **•** marks files with local edits. Turn it off to see only the branch's commits.
 - **Views:** **Diff | File | Preview** in the top bar (Preview for markdown and HTML). *File* shows the whole file at the right version: the index for staged changes, `HEAD` for a branch comparison without the working tree, the commit in the Commits tab, otherwise the file on disk. Line-number columns that no row uses are hidden.
@@ -49,7 +51,8 @@ Run `webdiffviewer` in any folder and open your browser. It finds the repository
   - a **TOC** panel next to the preview (an overlay on phones) that highlights the visible section.
 - **HTML preview:** `.html` files render in a sandboxed frame, with the repo's relative images and stylesheets. Scripts and forms are off, and the page can't reach the app or its API.
 - **Other repositories (`-parent-dir`):** the 📁 button and **Ctrl/⌘+K** open the fuzzy picker.
-- **Links:** the URL holds the folder, repo, tab, base, open commit, open file and view, so a reload or a shared link opens the same screen, and Back/Forward move between files. For example, `/?base=main&diff=web/src/App.jsx` or `/?tab=files&file=README.md`. The repo (`repo=`) is a path relative to the open folder, and `root=` is the `-parent-dir` folder. Themes, TOC and All branches stay as personal preferences.
+- **Sidebar tabs:** icons for Changes (with the change count), Explorer, Search and Commits, with tooltips.
+- **Links:** the URL holds the folder, repo, tab, base, viewed branch (`ref=`), open commit, open file and view, so a reload or a shared link opens the same screen, and Back/Forward move between files. For example, `/?base=main&diff=web/src/App.jsx` or `/?tab=files&file=README.md`. The repo (`repo=`) is a path relative to the open folder, and `root=` is the `-parent-dir` folder. Themes, TOC and All branches stay as personal preferences.
 - **Responsive:** up to 768px wide, the UI shows one pane at a time.
 - **Refresh:** reloads when the window gains focus, or with the refresh button.
 
@@ -105,7 +108,7 @@ webdiffviewer -host 0.0.0.0                  # reachable on the network (see Sec
 - The API rejects paths that leave the repo, through `..` or symlinks, and any path into `.git` (remote URLs there can hold tokens). `-parent-dir` also rejects folders outside it.
 - Gitignored files (like `.env`) can be opened by default. Use `-check-ignore` to hide them, especially with `-host 0.0.0.0`.
 - Git output is capped (files 5MB, diffs 10MB), so a huge file in history can't exhaust memory.
-- Only hex commit ids are accepted, so refs and options can't be injected into git commands.
+- Commits are hex ids; branch names are resolved with `git rev-parse --verify --end-of-options`, and values starting with `-` are rejected, so options can't be injected into git commands. Search text is passed with `-e`.
 - Markdown HTML is sanitized with DOMPurify. HTML previews run in a sandboxed iframe without scripts. Raw files (`/api/raw`) are served with `Content-Security-Policy: sandbox`.
 - Branch switching requires a JSON body, so another website open in the browser can't trigger it.
 
@@ -135,7 +138,7 @@ cmd/webdiffviewer/       entry point: flags and server startup
 internal/
   api/
     router.go            registers every route, the static frontend and middleware
-    handler/<domain>/    thin HTTP handlers (workspace, branches, changes, files, commits):
+    handler/<domain>/    thin HTTP handlers (workspace, branches, changes, files, commits, search):
                          router.go registers, get.go/post.go parse the request and call the service
     helpers/             JSON/text/error responses, repo and path validation
   git/                   data layer: runs git and parses its output (status, diff, log, worktrees)
@@ -147,9 +150,9 @@ pkg/
 web/embed.go             exposes the built frontend (go:embed can't reach parent folders)
 web/src/
   App.jsx                selection state (folder, repo, base, open file), URL and history, sidebar/viewer layout
-  components/            Tree, Viewer, CodeView, MarkdownPreview, Commits, CommitGraph, Picker,
-                         RepoList, BranchBar, ChangesPanel
-    ui/                  presentational primitives: shared Panda styles, Switch
+  components/            Tree, Viewer, CodeView, MarkdownPreview, HtmlPreview, Commits, CommitGraph,
+                         Picker (Cmd+K/Cmd+P), SearchPanel, RepoList, BranchBar, ChangesPanel
+    ui/                  presentational primitives: shared Panda styles, Switch, FileIcon, TabIcon
   hooks/                 createStoredSignal (localStorage), createSwipe, createWindowEvent, createCommitDetails
   lib/                   logic by domain, no UI
     api/                 API client
