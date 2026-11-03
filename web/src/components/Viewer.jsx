@@ -116,7 +116,7 @@ export default function Viewer(props) {
         }
       >
         <Show when={!data.error} fallback={<div class={errorBox}>{data.error?.message}</div>}>
-          <Show when={data.latest}>{(rows) => <CodeView rows={rows()} />}</Show>
+          <Show when={data.latest}>{(rows) => <CodeView rows={rows()} line={view() === 'file' ? props.sel.line : undefined} />}</Show>
         </Show>
       </Show>
     </Show>

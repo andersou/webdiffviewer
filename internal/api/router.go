@@ -9,6 +9,7 @@ import (
 	"github.com/andersou/webdiffviewer/internal/api/handler/changes"
 	"github.com/andersou/webdiffviewer/internal/api/handler/commits"
 	"github.com/andersou/webdiffviewer/internal/api/handler/files"
+	"github.com/andersou/webdiffviewer/internal/api/handler/search"
 	"github.com/andersou/webdiffviewer/internal/api/handler/workspace"
 	"github.com/andersou/webdiffviewer/pkg/middleware"
 	ws "github.com/andersou/webdiffviewer/services/workspace"
@@ -23,6 +24,7 @@ func New(w *ws.Workspace, web fs.FS, allowedHosts []string) http.Handler {
 	changes.Register(mux, w)
 	files.Register(mux, w)
 	commits.Register(mux, w)
+	search.Register(mux, w)
 	mux.Handle("/", middleware.CacheStatic(http.FileServerFS(web)))
 	return middleware.HostGuard(allowedHosts, mux)
 }

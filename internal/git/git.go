@@ -39,7 +39,7 @@ func RunLimit(dir string, limit int64, args ...string) ([]byte, error) {
 	if int64(len(out)) > limit {
 		cmd.Process.Kill()
 		cmd.Wait()
-		return nil, ErrTooLarge
+		return out[:limit], ErrTooLarge // the part that fit, for callers that can use a cut result
 	}
 	if err := cmd.Wait(); err != nil {
 		return out, fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(stderr.String()))

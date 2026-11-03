@@ -1,7 +1,7 @@
 // The URL mirrors what is on screen (folder, repo, tab, base, open file, view), so links and
 // reloads land on the same file. Preferences (themes, TOC, All branches) stay in localStorage.
 
-const TABS = ['changes', 'files', 'commits']
+const TABS = ['changes', 'files', 'search', 'commits']
 const VIEWS = ['diff', 'file', 'preview']
 const isMd = (path) => /\.(md|markdown|mdx)$/i.test(path || '')
 export const isHtml = (path) => /\.html?$/i.test(path || '')

@@ -1,9 +1,9 @@
-import { createMemo, For, Show } from 'solid-js'
+import { createEffect, createMemo, For, Show } from 'solid-js'
 import { css, cva } from 'styled-system/css'
 
 const CHUNK = 200 // rows per block; off-screen blocks are skipped by content-visibility
 
-const code = css({ flex: 1, overflow: 'auto', fontFamily: 'code', fontSize: '12px', lineHeight: '20px' })
+const code = css({ flex: 1, overflow: 'auto', fontFamily: 'code', fontSize: '12px', lineHeight: '20px', '& .hl': { bg: 'rgba(234, 92, 0, 0.22)' } })
 const chunkCls = css({ contentVisibility: 'auto', minW: 'max-content' })
 const ln = css({ w: '50px', flex: 'none', textAlign: 'right', pr: '8px', color: 'ui.faint', userSelect: 'none', mdDown: { w: '34px', pr: '4px' } })
 const txt = css({ px: '12px' })
@@ -27,14 +27,26 @@ const chunks = (rows) => {
   return out
 }
 
-// CodeView renders file or diff rows ({ t, o, n, text, html }) with line numbers.
+// CodeView renders file or diff rows ({ t, o, n, text, html }) with line numbers. With line (a
+// whole file, one row per line), that line is marked and scrolled into view.
 export default function CodeView(props) {
+  let el
+  createEffect(() => {
+    const i = (props.line || 0) - 1
+    const rows = props.rows // re-run when another file's rows render
+    el.querySelector('.hl')?.classList.remove('hl')
+    if (i < 0 || i >= rows.length) return
+    // rows sit in blocks of CHUNK; reaching the row directly avoids a reactive flag on every line
+    const r = el.children[Math.floor(i / CHUNK)]?.children[i % CHUNK]
+    r?.classList.add('hl')
+    r?.scrollIntoView({ block: 'center' })
+  })
   // a line-number column shows only if some row uses it: whole files and added files have
   // no old numbers, deleted files no new ones
   const showOld = createMemo(() => props.rows.some((r) => r.o != null))
   const showNew = createMemo(() => props.rows.some((r) => r.n != null))
   return (
-    <div class={code} style={{ '--ln-cols': (showOld() ? 1 : 0) + (showNew() ? 1 : 0) }}>
+    <div class={code} ref={el} style={{ '--ln-cols': (showOld() ? 1 : 0) + (showNew() ? 1 : 0) }}>
       <For each={chunks(props.rows)}>
         {(chunk) => (
           <div class={chunkCls} style={{ 'contain-intrinsic-size': `auto ${chunk.length * 20}px` }}>
