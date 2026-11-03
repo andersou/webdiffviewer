@@ -8,7 +8,13 @@ import (
 
 // List returns local and remote branches and the current one ("" when detached).
 func List(repo string) (Branches, error) {
-	out, err := git.Run(repo, "for-each-ref", "--format=%(HEAD)%(refname)", "refs/heads", "refs/remotes")
+	args := []string{"for-each-ref", "--sort=-committerdate", "--format=%(HEAD)%(refname)", "refs/heads"}
+	// only configured remotes: refs/remotes may keep stale refs of a deleted or never-added remote
+	remotes, _ := git.Run(repo, "remote")
+	for _, r := range strings.Fields(string(remotes)) {
+		args = append(args, "refs/remotes/"+r)
+	}
+	out, err := git.Run(repo, args...)
 	if err != nil {
 		return Branches{}, err
 	}
