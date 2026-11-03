@@ -4,6 +4,8 @@ import (
 	"errors"
 	"io"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/andersou/webdiffviewer/internal/git"
 	"github.com/andersou/webdiffviewer/pkg/apperr"
@@ -45,4 +47,47 @@ func read(repo, path, rev string, hideIgnored bool) ([]byte, error) {
 		return nil, apperr.NotFound("file not in " + rev)
 	}
 	return buf, nil
+}
+
+// notCommitted is the id git blame gives lines that only exist in the working tree.
+const notCommitted = "0000000000000000000000000000000000000000"
+
+// parseBlame reads `git blame --porcelain`: per line a "<sha> <orig> <final> [<count>]" header,
+// the commit's fields the first time that commit appears, then the line itself after a tab.
+func parseBlame(out string) BlameResult {
+	b := BlameResult{Commits: map[string]BlameCommit{}, Lines: []BlameLine{}}
+	cur := ""
+	for _, l := range strings.Split(out, "\n") {
+		if text, ok := strings.CutPrefix(l, "\t"); ok {
+			sha := cur
+			if sha == notCommitted {
+				sha = ""
+			}
+			b.Lines = append(b.Lines, BlameLine{Commit: sha, Text: text})
+			continue
+		}
+		k, v, _ := strings.Cut(l, " ")
+		if len(k) == 40 && git.IsHash(k) {
+			cur = k
+			continue
+		}
+		if cur == notCommitted {
+			continue
+		}
+		c := b.Commits[cur]
+		switch k {
+		case "author":
+			c.Author = v
+		case "author-time":
+			c.Time, _ = strconv.ParseInt(v, 10, 64)
+		case "summary":
+			c.Summary = v
+		case "filename":
+			c.Path = v
+		default:
+			continue
+		}
+		b.Commits[cur] = c
+	}
+	return b
 }

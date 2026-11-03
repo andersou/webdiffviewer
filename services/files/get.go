@@ -2,6 +2,7 @@ package files
 
 import (
 	"bytes"
+	"errors"
 	"io/fs"
 	"os"
 	"strings"
@@ -55,6 +56,35 @@ func Blob(repo, path, rev string) ([]byte, error) {
 		return nil, apperr.BadRequest("rev required")
 	}
 	return read(repo, path, rev, false)
+}
+
+// Blame returns each line of path with the commit that last changed it: in the working tree
+// (rev "" or ":", whose staged state git blame can't read), or at HEAD, a commit or a branch.
+func Blame(repo, path, rev string, hideIgnored bool) (BlameResult, error) {
+	args := []string{"-c", "core.quotepath=off", "blame", "--porcelain"}
+	switch {
+	case rev == "" || rev == ":":
+		if hideIgnored && git.IsIgnored(repo, path) {
+			return BlameResult{}, apperr.NotFound("file not found")
+		}
+	case rev == "HEAD" || git.IsHash(rev):
+		args = append(args, rev)
+	default:
+		h, err := git.ResolveRef(repo, rev)
+		if err != nil {
+			return BlameResult{}, apperr.BadRequest(err.Error())
+		}
+		args = append(args, h)
+	}
+	// porcelain repeats each line plus a header, so allow a few times the file size limit
+	out, err := git.RunLimit(repo, 4*MaxSize, append(args, "--", path)...)
+	if errors.Is(err, git.ErrTooLarge) {
+		return BlameResult{}, apperr.TooLarge("file too large to blame")
+	}
+	if err != nil {
+		return BlameResult{}, apperr.NotFound("cannot blame " + path + " (not committed?)")
+	}
+	return parseBlame(string(out)), nil
 }
 
 // Open opens a working-tree file for serving as-is. Symlinks that leave the repo are refused,

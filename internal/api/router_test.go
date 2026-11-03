@@ -193,6 +193,23 @@ func TestAPI(t *testing.T) {
 		t.Errorf("log of ref: got %d commits, want 2", len(featLog))
 	}
 
+	// blame: a.txt has "one" committed and "two" only in the working tree
+	var bl struct {
+		Commits map[string]struct{ Author, Summary, Path string }
+		Lines   []struct {
+			C    string
+			Text string
+		}
+	}
+	json.Unmarshal(get("/api/blame", q("path", "a.txt")).Body.Bytes(), &bl)
+	if len(bl.Lines) != 2 || bl.Lines[0].Text != "one" || bl.Lines[1].C != "" || bl.Commits[bl.Lines[0].C].Summary != "init" || bl.Commits[bl.Lines[0].C].Path != "a.txt" {
+		t.Errorf("blame of the working tree: %+v", bl)
+	}
+	expect("blame at HEAD", get("/api/blame", q("path", "a.txt", "rev", "HEAD")), http.StatusOK, `"text":"one"`)
+	expect("blame at ref", get("/api/blame", q("path", "feature.txt", "rev", "feature")), http.StatusOK, `"summary":"feat"`)
+	expect("blame bad rev", get("/api/blame", q("path", "a.txt", "rev", "--output=/tmp/x")), http.StatusBadRequest, "bad ref")
+	expect("blame untracked", get("/api/blame", q("path", "new.txt")), http.StatusNotFound, "cannot blame")
+
 	// Host header: IP addresses, localhost and --allowed-hosts pass; other names (DNS rebinding) don't
 	for host, status := range map[string]int{"192.168.1.10:8080": http.StatusOK, "localhost:8080": http.StatusOK, "[::1]:8080": http.StatusOK, "MAC.local:8080": http.StatusOK, "evil.example:8080": http.StatusForbidden} {
 		req := httptest.NewRequest("GET", "/api/config", nil)

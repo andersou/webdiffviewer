@@ -270,6 +270,8 @@ export default function App() {
   )
   const [folders] = createResource(() => picker() === 'folders', () => json('folders'))
   // a search result opens as the file's text (not a preview), so it can scroll to the line
+  // a blame cell: what that commit changed in the file (at its path then), with the commit open in the Commits tab
+  const openCommit = (hash, path) => (setOpenHash(hash), open({ kind: 'diff', path, commit: hash, key: `c:${hash}:${path}`, view: 'diff' }))
   // a view button: the new choice for this kind, and the item's own starting view no longer applies
   const pickView = (p) => batch(() => (setPref(p), setSel((s) => (s?.view ? { ...s, view: undefined } : s))))
   // a search result opens at its line in the File view; a changed file opens as that change, so Diff
@@ -390,7 +392,9 @@ export default function App() {
         />
       </Show>
       <main class={main}>
-        <Viewer repo={repo()} gitRef={gitRef()} sel={sel()} tick={tick()} pref={pref()} onPref={pickView} onBack={showListPane} onOpen={(path) => open({ kind: 'file', path, key: 'f:' + path })} />
+        <Viewer repo={repo()} gitRef={gitRef()} sel={sel()} tick={tick()} pref={pref()} onPref={pickView} onBack={showListPane} onOpen={(path) => open({ kind: 'file', path, key: 'f:' + path })}
+          onCommit={openCommit}
+        />
       </main>
     </div>
   )

@@ -2,12 +2,18 @@
 // reloads land on the same file. Preferences (themes, TOC, All branches) stay in localStorage.
 
 const TABS = ['changes', 'files', 'search', 'commits']
-const VIEWS = ['diff', 'file', 'preview']
+const VIEWS = ['diff', 'file', 'blame', 'preview']
 const isMd = (path) => /\.(md|markdown|mdx)$/i.test(path || '')
 export const isHtml = (path) => /\.html?$/i.test(path || '')
 
-// views lists what a selection can show: changes also offer the whole file; markdown and HTML add a preview.
-export const views = (sel) => [...(sel?.kind === 'diff' ? ['diff'] : []), 'file', ...(isMd(sel?.path) || isHtml(sel?.path) ? ['preview'] : [])]
+// views lists what a selection can show: changes also offer the whole file; files with history add
+// blame (not untracked or deleted ones); markdown and HTML add a preview.
+export const views = (sel) => [
+  ...(sel?.kind === 'diff' ? ['diff'] : []),
+  'file',
+  ...(sel?.untracked || sel?.status?.startsWith('D') ? [] : ['blame']),
+  ...(isMd(sel?.path) || isHtml(sel?.path) ? ['preview'] : []),
+]
 // markdown and HTML open as preview from the Explorer and as diff from Changes
 export const DEFAULT_PREF = { file: 'preview', diff: 'diff' }
 // viewOf is the view shown for sel: the one it was opened with (sel.view, e.g. File for a search

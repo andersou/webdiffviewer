@@ -7,6 +7,7 @@ import { createStoredSignal } from '../hooks/createStoredSignal.js'
 import CommitGraph, { MAX_LANES, ROW } from './CommitGraph.jsx'
 import Tree from './Tree.jsx'
 import { error, muted, name } from './ui/styles.js'
+import { ago } from '../lib/utils/time.js'
 
 const toolbar = css({ display: 'flex', alignItems: 'center', gap: '6px', px: '10px', py: '6px', fontSize: '12px', color: 'ui.muted', cursor: 'pointer' })
 const commitRow = cva({
@@ -27,15 +28,6 @@ const detailsBox = css({ borderTop: '1px solid token(colors.ui.border)', borderB
 const message = css({ px: '12px', py: '8px', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: '12px', lineHeight: '1.5' })
 const meta = css({ px: '12px', pb: '6px', fontSize: '11px', color: 'ui.muted', display: 'flex', flexWrap: 'wrap', gap: '4px 10px' })
 const moreBtn = css({ w: '100%', py: '8px', color: 'ui.link', _hover: { bg: 'ui.hover' } })
-
-// compact age for the narrow sidebar ("31m", "2h", "6d"); the full date is in the row's title
-function ago(seconds) {
-  const s = Math.max(0, Date.now() / 1000 - seconds)
-  for (const [unit, n] of [['y', 31536000], ['mo', 2592000], ['w', 604800], ['d', 86400], ['h', 3600], ['m', 60]]) {
-    if (s >= n) return Math.floor(s / n) + unit
-  }
-  return 'now'
-}
 
 // "HEAD -> main", "origin/main", "tag: v1" from git's %D
 const refKind = (r) => (r.startsWith('HEAD') ? 'head' : r.startsWith('tag: ') ? 'tag' : 'branch')

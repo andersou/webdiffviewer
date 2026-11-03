@@ -70,3 +70,17 @@ func (rt *Router) getRaw(w http.ResponseWriter, r *http.Request) {
 	sandbox()
 	http.ServeContent(w, r, st.Name(), st.ModTime(), f)
 }
+
+func (rt *Router) getBlame(w http.ResponseWriter, r *http.Request) {
+	repo, err := helpers.Repo(rt.ws, r)
+	if err != nil {
+		helpers.Fail(w, err)
+		return
+	}
+	b, err := files.Blame(repo, r.URL.Query().Get("path"), r.URL.Query().Get("rev"), rt.ws.CheckIgnore())
+	if err != nil {
+		helpers.Fail(w, err)
+		return
+	}
+	helpers.JSON(w, b)
+}

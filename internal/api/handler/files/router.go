@@ -14,4 +14,5 @@ func Register(mux *http.ServeMux, ws *workspace.Workspace) {
 	mux.HandleFunc("GET /api/files", rt.getFiles)
 	mux.HandleFunc("GET /api/file", rt.getFile)
 	mux.HandleFunc("GET /api/raw", rt.getRaw)
+	mux.HandleFunc("GET /api/blame", rt.getBlame)
 }

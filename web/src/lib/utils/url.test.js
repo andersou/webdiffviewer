@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { baseItems, changeItems } from '../git/changes.js'
-import { findRepo, fromSearch, relPath, toSearch, viewOf } from './url.js'
+import { findRepo, fromSearch, relPath, toSearch, viewOf, views } from './url.js'
 
 const H = 'cfcbd348'.padEnd(40, '0')
 
@@ -65,4 +65,11 @@ test('an item opened with a view keeps it until a view is picked', () => {
   assert.equal(viewOf({ kind: 'diff', path: 'a.py' }, pref), 'diff')
   assert.equal(viewOf({ kind: 'file', path: 'a.md', view: 'file' }, pref), 'file')
   assert.equal(viewOf({ kind: 'file', path: 'a.py', view: 'diff' }, pref), 'file') // a view the item can't show is ignored
+})
+
+test('blame is offered for files with history only', () => {
+  assert.deepEqual(views({ kind: 'diff', path: 'a.py' }), ['diff', 'file', 'blame'])
+  assert.deepEqual(views({ kind: 'file', path: 'a.md' }), ['file', 'blame', 'preview'])
+  assert.deepEqual(views({ kind: 'diff', path: 'n.py', untracked: true }), ['diff', 'file'])
+  assert.deepEqual(views({ kind: 'diff', path: 'gone.py', status: 'D•' }), ['diff', 'file'])
 })
