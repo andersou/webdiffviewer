@@ -87,7 +87,7 @@ export default function MarkdownPreview(props) {
       const src = await text('file', { repo, path, rev })
       const id = JSON.stringify([repo, path, t, rev])
       if (last?.id === id && last.src === src) return last.result
-      last = { id, src, result: { repo, path, dark: THEMES[t].dark, html: await renderMarkdown(src, THEMES[t].code) } }
+      last = { id, src, result: { repo, path, rev, dark: THEMES[t].dark, html: await renderMarkdown(src, THEMES[t].code) } }
       return last.result
     },
   )
@@ -121,11 +121,11 @@ export default function MarkdownPreview(props) {
   createEffect(() => {
     const r = md.latest
     if (!r || !mdEl) return
-    const { repo, path: from } = r
+    const { repo, path: from, rev } = r
     mdEl.innerHTML = r.html // set here (not via JSX) so links/images below always start from fresh DOM
     for (const img of mdEl.querySelectorAll('img[src]')) {
       const p = resolvePath(from, img.getAttribute('src'))
-      if (p) img.src = `/api/raw?${new URLSearchParams({ repo, path: p })}`
+      if (p) img.src = `/api/raw?${new URLSearchParams(rev ? { repo, path: p, rev } : { repo, path: p })}`
     }
     // in-page links ([TOC], footnotes) scroll here; letting the browser change the hash would add a
     // history entry, and going back over it would close the file on phones

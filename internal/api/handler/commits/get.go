@@ -16,7 +16,7 @@ func (rt *Router) getLog(w http.ResponseWriter, r *http.Request) {
 	}
 	var skip int
 	fmt.Sscan(r.URL.Query().Get("skip"), &skip)
-	list, err := commits.Log(repo, skip, r.URL.Query().Get("all") == "1")
+	list, err := commits.Log(repo, skip, r.URL.Query().Get("all") == "1", r.URL.Query().Get("ref"))
 	if err != nil {
 		helpers.Fail(w, err)
 		return

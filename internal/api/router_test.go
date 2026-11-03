@@ -125,7 +125,7 @@ func TestAPI(t *testing.T) {
 	// protections
 	expect("path escape", get("/api/file", q("path", "../secret")), http.StatusBadRequest, "bad path")
 	expect("bad hash", get("/api/commit", q("hash", "HEAD")), http.StatusBadRequest, "bad commit")
-	expect("bad rev", get("/api/file", q("path", "a.txt", "rev", "main")), http.StatusBadRequest, "rev must be")
+	expect("bad rev", get("/api/file", q("path", "a.txt", "rev", "--output=/tmp/x")), http.StatusBadRequest, "bad ref")
 	expect("checkout without JSON", do("POST", "/api/checkout?"+q().Encode(), "text/plain", "branch=main"), http.StatusUnsupportedMediaType, "")
 	expect("checkout option", do("POST", "/api/checkout?"+q().Encode(), "application/json", `{"branch":"-f"}`), http.StatusBadRequest, "bad branch")
 	expect("no parent dir", get("/api/folders", nil), http.StatusNotFound, "--parent-dir")
@@ -178,6 +178,20 @@ func TestAPI(t *testing.T) {
 	var featLog []map[string]any
 	json.Unmarshal(get("/api/log", qf()).Body.Bytes(), &featLog)
 	expect("diff in commit", get("/api/diff", qf("path", "feature.txt", "commit", featLog[0]["hash"].(string))), http.StatusOK, "+feat")
+
+	// the feature branch viewed from main without checking it out
+	expect("files of ref", get("/api/files", q("ref", "feature")), http.StatusOK, "feature.txt")
+	expect("file at ref", get("/api/file", q("path", "feature.txt", "rev", "feature")), http.StatusOK, "feat")
+	expect("raw at ref", get("/api/raw", q("path", "feature.txt", "rev", "feature")), http.StatusOK, "feat")
+	expect("diff of ref", get("/api/diff", q("path", "feature.txt", "ref", "feature", "base", "main")), http.StatusOK, "+feat")
+	expect("unknown ref", get("/api/files", q("ref", "nope")), http.StatusBadRequest, "unknown ref")
+	if got := paths(get("/api/status", q("ref", "feature"))); got != "feature.txt" { // base "" = HEAD (main)
+		t.Errorf("status of ref: got %q, want feature.txt and no working-tree changes", got)
+	}
+	json.Unmarshal(get("/api/log", q("ref", "feature")).Body.Bytes(), &featLog)
+	if len(featLog) != 2 {
+		t.Errorf("log of ref: got %d commits, want 2", len(featLog))
+	}
 
 	// Host header: IP addresses, localhost and --allowed-hosts pass; other names (DNS rebinding) don't
 	for host, status := range map[string]int{"192.168.1.10:8080": http.StatusOK, "localhost:8080": http.StatusOK, "[::1]:8080": http.StatusOK, "MAC.local:8080": http.StatusOK, "evil.example:8080": http.StatusForbidden} {

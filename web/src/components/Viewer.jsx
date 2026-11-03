@@ -28,12 +28,13 @@ const segBtn = cva({
 })
 const LABELS = { diff: 'Diff', file: 'File', preview: 'Preview' }
 
-// version shown by File/Preview: the commit itself in the Commits tab, the index for staged
-// changes, HEAD for a branch comparison without the working tree, otherwise the file on disk
-const rev = (s) => (s.kind !== 'diff' ? '' : s.commit || (s.staged ? ':' : s.base && !s.wt ? 'HEAD' : ''))
+// version shown by File/Preview: the commit itself in the Commits tab, the branch viewed without
+// checkout, the index for staged changes, HEAD for a branch comparison without the working tree,
+// otherwise the file on disk
+const rev = (s, ref) => s.commit || ref || (s.kind !== 'diff' ? '' : s.staged ? ':' : s.base && !s.wt ? 'HEAD' : '')
 
-const where = (s) =>
-  s.kind === 'file' ? '' : s.commit ? ` (commit ${s.commit.slice(0, 7)})` : s.base ? ` (vs ${s.base})` : s.staged ? ' (staged)' : s.untracked ? ' (untracked)' : ' (working tree)'
+const where = (s, ref) =>
+  s.kind === 'file' ? (ref ? ` (${ref})` : '') : ref && !s.commit ? ` (${ref} vs ${s.base})` : s.commit ? ` (commit ${s.commit.slice(0, 7)})` : s.base ? ` (vs ${s.base})` : s.staged ? ' (staged)' : s.untracked ? ' (untracked)' : ' (working tree)'
 
 // Viewer shows the selected file or change as Diff, File or (markdown/HTML) Preview.
 export default function Viewer(props) {
@@ -47,13 +48,13 @@ export default function Viewer(props) {
   // a refresh (window focus) that fetches the same text returns the same rows, so nothing re-renders
   let last
   const [data] = createResource(
-    () => props.sel && !preview() && [props.repo, props.sel, props.tick, view()],
-    async ([repo, s, , v]) => {
+    () => props.sel && !preview() && [props.repo, props.sel, props.tick, view(), props.gitRef],
+    async ([repo, s, , v, ref]) => {
       const src =
         v === 'file'
-          ? await text('file', { repo, path: s.path, rev: rev(s) })
-          : await text('diff', { repo, path: s.path, orig: s.orig || '', base: s.base || '', commit: s.commit || '', wt: s.wt ? 1 : 0, staged: s.staged ? 1 : 0, untracked: s.untracked ? 1 : 0 })
-      const id = JSON.stringify([repo, s.key, s.base, s.wt, v])
+          ? await text('file', { repo, path: s.path, rev: rev(s, ref) })
+          : await text('diff', { repo, path: s.path, orig: s.orig || '', base: s.base || '', commit: s.commit || '', wt: s.wt ? 1 : 0, staged: s.staged ? 1 : 0, untracked: s.untracked ? 1 : 0, ref: (!s.commit && ref) || '' })
+      const id = JSON.stringify([repo, s.key, s.base, s.wt, v, ref])
       if (last?.id === id && last.src === src) return last.rows
       let rows
       if (v === 'file') {
@@ -90,19 +91,19 @@ export default function Viewer(props) {
         <Show when={props.sel.orig}>
           <span class={muted}> ← {props.sel.orig}</span>
         </Show>
-        <span class={muted}>{where(props.sel)}</span>
+        <span class={muted}>{where(props.sel, props.gitRef)}</span>
       </div>
       <Show
         when={!preview()}
         fallback={
           <Show
             when={!isHtml(props.sel.path)}
-            fallback={<HtmlPreview repo={props.repo} path={props.sel.path} rev={rev(props.sel)} tick={props.tick} />}
+            fallback={<HtmlPreview repo={props.repo} path={props.sel.path} rev={rev(props.sel, props.gitRef)} tick={props.tick} />}
           >
             <MarkdownPreview
               repo={props.repo}
               path={props.sel.path}
-              rev={rev(props.sel)}
+              rev={rev(props.sel, props.gitRef)}
               tick={props.tick}
               theme={theme()}
               onTheme={setTheme}

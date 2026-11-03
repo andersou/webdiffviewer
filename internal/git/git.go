@@ -60,13 +60,25 @@ var hashRe = regexp.MustCompile(`^[0-9a-f]{4,64}$`)
 // IsHash accepts abbreviated or full commit ids; anything else (refs, options) is rejected.
 func IsHash(s string) bool { return hashRe.MatchString(s) }
 
-// MergeBase returns the fork point of HEAD and base, so a diff shows only this branch's changes (PR-style).
-func MergeBase(repo, base string) (string, error) {
-	if strings.HasPrefix(base, "-") {
+// MergeBase returns the fork point of head and base, so a diff shows only head's changes (PR-style).
+func MergeBase(repo, base, head string) (string, error) {
+	if strings.HasPrefix(base, "-") || strings.HasPrefix(head, "-") {
 		return "", errors.New("bad base")
 	}
-	out, err := Run(repo, "merge-base", base, "HEAD")
+	out, err := Run(repo, "merge-base", base, head)
 	return strings.TrimSpace(string(out)), err
+}
+
+// ResolveRef returns the commit hash a branch, tag or commit names.
+func ResolveRef(repo, ref string) (string, error) {
+	if ref == "" || strings.HasPrefix(ref, "-") {
+		return "", errors.New("bad ref")
+	}
+	out, err := Run(repo, "rev-parse", "--verify", "--quiet", "--end-of-options", ref+"^{commit}")
+	if err != nil {
+		return "", errors.New("unknown ref " + ref)
+	}
+	return strings.TrimSpace(string(out)), nil
 }
 
 // Discover finds the repo containing base plus every git repo/submodule below it (like VS Code's repo scan).

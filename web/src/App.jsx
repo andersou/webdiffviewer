@@ -86,6 +86,12 @@ export default function App() {
   const [base, setBase] = createSignal('') // '' = working tree vs index/HEAD; else compare with this branch
   // in a branch comparison, also include uncommitted + untracked changes
   const [withWT, setWithWT, setWithWTOnce] = createStoredSignal('compareWT', true)
+  // a branch viewed without checkout: Explorer, files, changes and commits read from it ('' = what is checked out)
+  const [gitRef, setRef] = createSignal('')
+  const [checkoutMode, setCheckoutMode] = createStoredSignal('checkoutMode', true) // off: picking a branch only views it
+  // a viewed branch is compared with Base or, without one, with HEAD; the working tree doesn't apply
+  const cmpBase = () => (gitRef() ? base() || 'HEAD' : base())
+  const cmpWT = () => !gitRef() && withWT()
   const [pref, setPref] = createSignal(DEFAULT_PREF) // last view (Diff/File/Preview) per kind
   const [openHash, setOpenHash] = createSignal() // commit expanded in the Commits tab
   const toggleWT = (on) => {
@@ -97,8 +103,16 @@ export default function App() {
       setRepo(path)
       setSel()
       setBase('')
+      setRef('')
       setOpenHash()
     })
+  const pickRef = (b) => {
+    push()
+    batch(() => {
+      setRef(b)
+      setSel((s) => (s?.kind === 'diff' && !s.commit ? undefined : s)) // an open file stays open, now at b
+    })
+  }
   const pickRepo = (path) => path !== repo() && (push(), selectRepo(path))
   const pickBase = (b) => {
     push()
@@ -122,6 +136,7 @@ export default function App() {
         if (!path) return r.list.length && selectRepo(r.list[0].path)
         setRepo(path)
         setBase(w.base)
+        setRef(w.ref)
         if (w.base) setWithWTOnce(w.wt)
         setOpenHash(w.commit || undefined)
         setSel(w.sel)
@@ -146,6 +161,7 @@ export default function App() {
       tab: tab(),
       base: base(),
       wt: withWT(),
+      ref: gitRef(),
       commit: openHash(),
       sel: s,
       view: v !== viewOf(s, DEFAULT_PREF) && v,
@@ -201,10 +217,13 @@ export default function App() {
 
   const key = () => repo() && [repo(), tick()]
   const [branches] = createResource(key, ([r]) => json('branches', { repo: r }))
-  const [files] = createResource(key, ([r]) => json('files', { repo: r }))
+  const [files] = createResource(
+    () => repo() && [repo(), tick(), gitRef()],
+    ([r, , ref]) => json('files', ref ? { repo: r, ref } : { repo: r }),
+  )
   const [status] = createResource(
-    () => repo() && [repo(), tick(), base(), withWT()],
-    ([r, , b, wt]) => json('status', b ? { repo: r, base: b, wt: wt ? 1 : 0 } : { repo: r }),
+    () => repo() && [repo(), tick(), cmpBase(), cmpWT(), gitRef()],
+    ([r, , b, wt, ref]) => json('status', b ? { repo: r, base: b, wt: wt ? 1 : 0, ref } : { repo: r }),
   )
   const statusList = () => (status.error ? [] : status.latest || []) // .latest throws after an error (e.g. a deleted base)
   const fileItems = createMemo(() => (files.error ? [] : files.latest || []).map((path) => ({ path, key: 'f:' + path, kind: 'file' })))
@@ -212,7 +231,9 @@ export default function App() {
 
   createEffect(() => {
     const b = !branches.error && branches.latest
-    if (b && base() && !b.local.includes(base()) && !b.remote.includes(base())) batch(() => (setBase(''), setSel((s) => (s?.base ? undefined : s))))
+    const gone = (n) => n && !b.local.includes(n) && !b.remote.includes(n)
+    if (b && gone(base())) batch(() => (setBase(''), setSel((s) => (s?.base ? undefined : s))))
+    if (b && (gone(gitRef()) || gitRef() === b.current)) setRef('') // deleted, or checked out after all
   })
 
   const checkout = async (branch) => {
@@ -238,7 +259,14 @@ export default function App() {
           onPick={() => setPicker(true)}
         />
         <Show when={branches.latest}>
-          {(b) => <BranchBar branches={b()} onCheckout={checkout} base={base()} onBase={pickBase} withWorktree={withWT()} onWithWorktree={toggleWT} />}
+          {(b) => <BranchBar
+              branches={b()}
+              onCheckout={checkout}
+              gitRef={gitRef()}
+              onView={pickRef}
+              checkoutMode={checkoutMode()}
+              onCheckoutMode={(on) => (setCheckoutMode(on), on && gitRef() && pickRef(''))}
+              base={base()} onBase={pickBase} withWorktree={withWT()} onWithWorktree={toggleWT} />}
         </Show>
 
         <nav class={tabs}>
@@ -255,13 +283,13 @@ export default function App() {
 
         <div class={treeBox}>
           <Show when={tab() === 'changes'}>
-            <ChangesPanel status={statusList()} base={base()} withWorktree={withWT()} selected={sel()?.key} onSelect={open} />
+            <ChangesPanel status={statusList()} base={cmpBase()} withWorktree={cmpWT()} selected={sel()?.key} onSelect={open} />
           </Show>
           <Show when={tab() === 'files'}>
             <Tree items={fileItems()} selected={sel()?.key} reveal={sel()?.kind === 'file' ? sel().path : undefined} onSelect={open} badge={(i) => letters().get(i.path)} />
           </Show>
           <Show when={tab() === 'commits'}>
-            <Commits repo={repo()} tick={tick()} selected={sel()?.key} onSelect={open} openHash={openHash()} onOpenHash={setOpenHash} />
+            <Commits repo={repo()} gitRef={gitRef()} tick={tick()} selected={sel()?.key} onSelect={open} openHash={openHash()} onOpenHash={setOpenHash} />
           </Show>
           <Show when={status.error || files.error}>
             <div class={error}>{(status.error || files.error).message}</div>
@@ -279,7 +307,7 @@ export default function App() {
         <Picker parent={cfg().parent} current={root() || cfg().base} onPick={openRoot} onClose={() => setPicker(false)} />
       </Show>
       <main class={main}>
-        <Viewer repo={repo()} sel={sel()} tick={tick()} pref={pref()} onPref={setPref} onBack={showListPane} onOpen={(path) => open({ kind: 'file', path, key: 'f:' + path })} />
+        <Viewer repo={repo()} gitRef={gitRef()} sel={sel()} tick={tick()} pref={pref()} onPref={setPref} onBack={showListPane} onOpen={(path) => open({ kind: 'file', path, key: 'f:' + path })} />
       </main>
     </div>
   )

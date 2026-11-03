@@ -14,7 +14,7 @@ func (rt *Router) getStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	q := r.URL.Query()
-	list, err := changes.Status(repo, q.Get("base"), q.Get("wt") == "1")
+	list, err := changes.Status(repo, q.Get("base"), q.Get("wt") == "1", q.Get("ref"))
 	if err != nil {
 		helpers.Fail(w, err)
 		return
@@ -35,6 +35,7 @@ func (rt *Router) getDiff(w http.ResponseWriter, r *http.Request) {
 		Commit:       q.Get("commit"),
 		Untracked:    q.Get("untracked") == "1",
 		Base:         q.Get("base"),
+		Ref:          q.Get("ref"),
 		WithWorktree: q.Get("wt") == "1",
 		Staged:       q.Get("staged") == "1",
 		HideIgnored:  rt.ws.CheckIgnore(),

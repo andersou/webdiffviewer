@@ -11,11 +11,23 @@ import (
 
 // Status lists working-tree changes, or with base the changes since the merge-base with that
 // branch (committed only, or including uncommitted and untracked files when withWorktree).
-func Status(repo, base string, withWorktree bool) ([]git.Change, error) {
+// With ref (a branch not checked out), it lists ref's changes since its merge-base with base or HEAD.
+func Status(repo, base string, withWorktree bool, ref string) ([]git.Change, error) {
+	if ref != "" {
+		head, mb, err := refRange(repo, base, ref)
+		if err != nil {
+			return nil, err
+		}
+		out, err := git.Run(repo, "diff", "--name-status", "-z", "-M", mb, head)
+		if err != nil {
+			return nil, err
+		}
+		return git.ParseNameStatus(string(out)), nil
+	}
 	if base == "" {
 		return worktreeStatus(repo)
 	}
-	mb, err := mergeBase(repo, base)
+	mb, err := mergeBase(repo, base, "HEAD")
 	if err != nil {
 		return nil, err
 	}

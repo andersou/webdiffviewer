@@ -11,14 +11,22 @@ import (
 
 const pageSize = 300
 
-// Log lists HEAD's history, or every branch/tag with all, pageSize commits after skip.
+// Log lists the history of ref ("" = HEAD), or every branch/tag with all, pageSize commits after skip.
 // Bodies and emails are left out; Details has them.
-func Log(repo string, skip int, all bool) ([]git.Commit, error) {
+func Log(repo string, skip int, all bool, ref string) ([]git.Commit, error) {
+	head := "HEAD"
+	if ref != "" {
+		h, err := git.ResolveRef(repo, ref)
+		if err != nil {
+			return nil, apperr.BadRequest(err.Error())
+		}
+		head = h
+	}
 	args := []string{"log", "--topo-order", "-n", fmt.Sprint(pageSize), "--skip", fmt.Sprint(max(skip, 0)), "--format=" + git.LogFormat}
 	if all {
 		args = append(args, "--branches", "--remotes", "--tags")
 	}
-	out, err := git.Run(repo, append(args, "HEAD", "--")...)
+	out, err := git.Run(repo, append(args, head, "--")...)
 	if err != nil && !strings.Contains(err.Error(), "does not have any commits") {
 		return nil, err
 	}

@@ -10,9 +10,17 @@ import (
 	"github.com/andersou/webdiffviewer/pkg/apperr"
 )
 
-// List returns tracked and untracked (not ignored) files.
-func List(repo string) ([]string, error) {
-	out, err := git.Run(repo, "ls-files", "-z", "--cached", "--others", "--exclude-standard")
+// List returns tracked and untracked (not ignored) files, or with ref the files of that branch.
+func List(repo, ref string) ([]string, error) {
+	args := []string{"ls-files", "-z", "--cached", "--others", "--exclude-standard"}
+	if ref != "" {
+		h, err := git.ResolveRef(repo, ref)
+		if err != nil {
+			return nil, apperr.BadRequest(err.Error())
+		}
+		args = []string{"ls-tree", "-r", "-z", "--name-only", "--full-tree", h}
+	}
+	out, err := git.Run(repo, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -26,7 +34,7 @@ func List(repo string) ([]string, error) {
 }
 
 // Read returns a text file from the working tree (rev ""), or the version git stores at
-// rev "HEAD", ":" (the index) or a commit hash. With hideIgnored, gitignored files are refused.
+// rev "HEAD", ":" (the index), a commit hash or a branch. With hideIgnored, gitignored files are refused.
 func Read(repo, path, rev string, hideIgnored bool) ([]byte, error) {
 	buf, err := read(repo, path, rev, hideIgnored)
 	if err != nil {
@@ -39,6 +47,14 @@ func Read(repo, path, rev string, hideIgnored bool) ([]byte, error) {
 		return nil, apperr.Unsupported("binary file")
 	}
 	return buf, nil
+}
+
+// Blob returns a file as git stores it at rev (raw files of a branch viewed without checkout).
+func Blob(repo, path, rev string) ([]byte, error) {
+	if rev == "" {
+		return nil, apperr.BadRequest("rev required")
+	}
+	return read(repo, path, rev, false)
 }
 
 // Open opens a working-tree file for serving as-is. Symlinks that leave the repo are refused,

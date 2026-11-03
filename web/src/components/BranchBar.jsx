@@ -20,33 +20,44 @@ const BranchOptions = (props) => (
   </>
 )
 
-// BranchBar switches the current branch and picks the Base branch the changes are compared with.
+// BranchBar switches the current branch (or, with Checkout off, only views another one) and picks
+// the Base branch the changes are compared with.
 export default function BranchBar(props) {
-  const checkout = (e) => {
+  const pick = (e) => {
     const opt = e.target.selectedOptions[0]
+    if (!props.checkoutMode) return props.onView(opt.value === props.branches.current ? '' : opt.value)
     // remote "origin/feat" -> "feat": git switch creates the tracking branch
     props.onCheckout(opt.dataset.remote ? opt.value.slice(opt.value.indexOf('/') + 1) : opt.value)
   }
   return (
     <section class={`${section} ${box}`}>
-      <label>
-        <span class={fieldLabel}>Branch</span>
-        <select class={`${select} ${grow}`} value={props.branches.current} onChange={checkout}>
-          <Show when={!props.branches.current}>
-            <option value="">(detached)</option>
-          </Show>
-          <BranchOptions branches={props.branches} markRemote />
-        </select>
-      </label>
+      <div class={baseRow}>
+        <label>
+          <span class={fieldLabel}>Branch</span>
+          <select class={`${select} ${grow}`} value={props.gitRef || props.branches.current} onChange={pick}>
+            <Show when={!props.branches.current}>
+              <option value="">(detached)</option>
+            </Show>
+            <BranchOptions branches={props.branches} markRemote />
+          </select>
+        </label>
+        <Switch
+          checked={props.checkoutMode}
+          onChange={props.onCheckoutMode}
+          title="On: picking a branch checks it out (git switch). Off: it is only viewed; the repo stays as it is"
+        >
+          Checkout
+        </Switch>
+      </div>
       <div class={baseRow}>
         <label>
           <span class={fieldLabel}>Base</span>
           <select class={`${select} ${grow}`} value={props.base} onChange={(e) => props.onBase(e.target.value)}>
-            <option value="">Working tree (uncommitted)</option>
+            <option value="">{props.gitRef ? `Checked out (${props.branches.current || 'HEAD'})` : 'Working tree (uncommitted)'}</option>
             <BranchOptions branches={props.branches} />
           </select>
         </label>
-        <Show when={props.base}>
+        <Show when={props.base && !props.gitRef}>
           <Switch checked={props.withWorktree} onChange={props.onWithWorktree} title="Include uncommitted and untracked changes in the comparison">
             Working tree
           </Switch>

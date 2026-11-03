@@ -27,7 +27,11 @@ func read(repo, path, rev string, hideIgnored bool) ([]byte, error) {
 		return buf, nil
 	}
 	if rev != "HEAD" && rev != ":" && !git.IsHash(rev) {
-		return nil, apperr.BadRequest("rev must be HEAD, : or a commit hash")
+		h, err := git.ResolveRef(repo, rev) // a branch: read the commit it points to
+		if err != nil {
+			return nil, apperr.BadRequest(err.Error())
+		}
+		rev = h
 	}
 	sep := ":"
 	if rev == ":" {

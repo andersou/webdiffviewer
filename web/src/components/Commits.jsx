@@ -51,14 +51,14 @@ export default function Commits(props) {
   // a refresh reloads only the first page; extra pages are dropped only for another repo or mode
   let listId
   const [first] = createResource(
-    () => props.repo && [props.repo, props.tick, all()],
-    ([repo, , a]) => {
-      if (listId !== `${repo}\0${a}`) {
-        listId = `${repo}\0${a}`
+    () => props.repo && [props.repo, props.tick, all(), props.gitRef],
+    ([repo, , a, ref]) => {
+      if (listId !== `${repo}\0${a}\0${ref}`) {
+        listId = `${repo}\0${a}\0${ref}`
         setExtra([])
         setDone(false)
       }
-      return json('log', { repo, all: a ? 1 : 0 }).then((list) => (extra().length || setDone(list.length < 300), list))
+      return json('log', { repo, all: a ? 1 : 0, ref }).then((list) => (extra().length || setDone(list.length < 300), list))
     },
   )
   // new commits on top shift the pages, so the first page may repeat some of the extra ones
@@ -72,7 +72,7 @@ export default function Commits(props) {
 
   const more = async () => {
     setLoadingMore(true)
-    const page = await json('log', { repo: props.repo, all: all() ? 1 : 0, skip: commits().length }).finally(() => setLoadingMore(false))
+    const page = await json('log', { repo: props.repo, all: all() ? 1 : 0, ref: props.gitRef, skip: commits().length }).finally(() => setLoadingMore(false))
     setExtra((e) => [...e, ...page])
     setDone(page.length < 300)
   }

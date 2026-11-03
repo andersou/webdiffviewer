@@ -6,7 +6,7 @@ package changes
 const MaxDiff = 10 << 20
 
 // DiffQuery selects which diff of Path to show. Exactly one source applies, in this order:
-// Commit (what that commit changed), Untracked (whole new file), Base (vs the merge-base with
+// Commit (what that commit changed), Ref (that branch vs its merge-base with Base or HEAD), Untracked (whole new file), Base (vs the merge-base with
 // that branch, plus the working tree when WithWorktree), Staged (index vs HEAD), else working tree.
 type DiffQuery struct {
 	Path         string
@@ -14,6 +14,7 @@ type DiffQuery struct {
 	Commit       string
 	Untracked    bool
 	Base         string
+	Ref          string // branch viewed without checkout; wins over everything but Commit
 	WithWorktree bool
 	Staged       bool
 	HideIgnored  bool // --check-ignore: refuse untracked diffs of gitignored files

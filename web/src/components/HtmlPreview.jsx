@@ -10,12 +10,12 @@ const ASSETS = [['img', 'src'], ['source', 'src'], ['video', 'src'], ['video', '
 
 // page prepares the repo HTML file `path` for the frame: repo-relative assets load from /api/raw and
 // links open in a new tab (inside the frame they would point nowhere).
-function page(src, repo, path) {
+function page(src, repo, path, rev) {
   const doc = new DOMParser().parseFromString(src, 'text/html')
   for (const [tag, attr] of ASSETS) {
     for (const el of doc.querySelectorAll(`${tag}[${attr}]`)) {
       const p = resolvePath(path, el.getAttribute(attr))
-      if (p) el.setAttribute(attr, `/api/raw?${new URLSearchParams({ repo, path: p })}`)
+      if (p) el.setAttribute(attr, `/api/raw?${new URLSearchParams(rev ? { repo, path: p, rev } : { repo, path: p })}`)
     }
   }
   doc.head.prepend(Object.assign(doc.createElement('base'), { target: '_blank' }))
@@ -27,7 +27,7 @@ function page(src, repo, path) {
 export default function HtmlPreview(props) {
   const [html] = createResource(
     () => [props.repo, props.path, props.tick, props.rev],
-    ([repo, path, , rev]) => text('file', { repo, path, rev }).then((src) => page(src, repo, path)),
+    ([repo, path, , rev]) => text('file', { repo, path, rev }).then((src) => page(src, repo, path, rev)),
   )
   return (
     <Show when={!html.error} fallback={<div class={errorBox}>{html.error?.message}</div>}>

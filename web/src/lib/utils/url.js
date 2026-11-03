@@ -38,7 +38,8 @@ export function findRepo(repos, dir, id) {
 export function fromSearch(search) {
   const q = new URLSearchParams(search)
   const get = (k) => q.get(k) || ''
-  const base = get('base')
+  const ref = get('ref')
+  const base = get('base') || (ref && 'HEAD') // a viewed branch without Base is compared with HEAD (see App)
   const wt = get('wt') !== '0'
   const commit = /^[0-9a-f]{7,64}$/i.test(get('commit')) ? get('commit') : ''
   const view = VIEWS.includes(get('view')) ? get('view') : ''
@@ -55,7 +56,7 @@ export function fromSearch(search) {
         ? { kind: 'diff', path, orig, base, wt, untracked, key: 'b:' + path }
         : { kind: 'diff', path, orig, staged, untracked, key: (staged ? 's:' : 'w:') + path }
   }
-  return { root: get('root'), repo: get('repo') || '.', tab: TABS.includes(get('tab')) ? get('tab') : 'changes', base, wt, commit, sel, view }
+  return { root: get('root'), repo: get('repo') || '.', tab: TABS.includes(get('tab')) ? get('tab') : 'changes', base: get('base'), wt, ref, commit, sel, view }
 }
 
 // toSearch encodes the state in a fixed order with defaults left out, so equal states give equal
@@ -66,6 +67,7 @@ export function toSearch(s) {
   add('root', s.root)
   add('repo', s.repo !== '.' && s.repo)
   add('tab', s.tab !== 'changes' && s.tab)
+  add('ref', s.ref)
   add('base', s.base)
   if (s.base && !s.wt) q.set('wt', '0')
   const it = s.sel

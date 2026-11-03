@@ -14,8 +14,8 @@ func worktreeStatus(repo string) ([]git.Change, error) {
 }
 
 // mergeBase is git.MergeBase with a client error for unknown or invalid branches.
-func mergeBase(repo, base string) (string, error) {
-	mb, err := git.MergeBase(repo, base)
+func mergeBase(repo, base, head string) (string, error) {
+	mb, err := git.MergeBase(repo, base, head)
 	if err != nil {
 		return "", apperr.BadRequest(err.Error())
 	}
@@ -39,11 +39,17 @@ func diffArgs(repo string, q DiffQuery) ([]string, error) {
 		// one git call; merges diff against the first parent, root commits against nothing
 		show := []string{"-c", "core.quotepath=off", "show", "--no-color", "--no-ext-diff", "--diff-merges=first-parent", "-M", "--format=", q.Commit, "--"}
 		return append(show, paths()...), nil
+	case q.Ref != "": // a branch viewed without checkout: merge-base(Base or HEAD)..Ref, never the working tree
+		head, mb, err := refRange(repo, q.Base, q.Ref)
+		if err != nil {
+			return nil, err
+		}
+		return append(append(diff, "-M", mb, head, "--"), paths()...), nil
 	case q.Untracked: // before Base: untracked files have no history, even in a branch comparison
 		// git special-cases /dev/null on every OS (os.DevNull is NUL on Windows)
 		return append(diff, "--no-index", "--", "/dev/null", q.Path), nil
 	case q.Base != "":
-		mb, err := mergeBase(repo, q.Base)
+		mb, err := mergeBase(repo, q.Base, "HEAD")
 		if err != nil {
 			return nil, err
 		}
@@ -57,4 +63,16 @@ func diffArgs(repo string, q DiffQuery) ([]string, error) {
 	default:
 		return append(diff, "--", q.Path), nil
 	}
+}
+
+// refRange resolves ref and its merge-base with base ("" = HEAD), for comparing a branch that isn't checked out.
+func refRange(repo, base, ref string) (head, mb string, err error) {
+	if head, err = git.ResolveRef(repo, ref); err != nil {
+		return "", "", apperr.BadRequest(err.Error())
+	}
+	if base == "" {
+		base = "HEAD"
+	}
+	mb, err = mergeBase(repo, base, head)
+	return head, mb, err
 }

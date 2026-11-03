@@ -22,6 +22,9 @@ test('every URL shape survives decode + encode unchanged', () => {
     '?root=/Users/dev/git/acme&repo=packages/ui&tab=files',
     '?file=a+b/%23c%26d%25.md',
     '?file=%C3%A1rvore+%E2%9C%93.txt',
+    '?tab=files&ref=origin/feat&file=a.go',
+    '?ref=feat&diff=a.go',
+    '?ref=feat&base=main&diff=a.go',
   ]) {
     assert.equal(toSearch(fromSearch(u)), u, u)
   }
@@ -35,6 +38,8 @@ test('decoded selections match the sidebar keys', () => {
   }
   for (const it of baseItems(status, 'main', false)) assert.equal(fromSearch(toSearch({ repo: '.', tab: 'changes', base: 'main', wt: false, sel: it })).sel.key, it.key)
   assert.equal(fromSearch(`?commit=${H}&diff=x.go`).sel.key, `c:${H}:x.go`)
+  // a viewed branch without Base compares with HEAD, so its diffs are branch-comparison items
+  assert.deepEqual(fromSearch('?ref=feat&diff=a.go').sel, { kind: 'diff', path: 'a.go', orig: undefined, base: 'HEAD', wt: true, untracked: false, key: 'b:a.go' })
 })
 
 test('invalid values are ignored', () => {
