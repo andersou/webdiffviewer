@@ -43,6 +43,19 @@ const toFile = css({
   mdDown: { display: 'flex', alignItems: 'center', gap: '8px', w: '100%', px: '14px', py: '12px', borderTop: '1px solid token(colors.ui.border)', bg: 'ui.raised', textAlign: 'left' },
 })
 
+// last screen (the URL query) per repo path, restored when that repo is picked again
+const lastScreens = () => {
+  try {
+    return JSON.parse(localStorage.getItem('lastScreens')) || {}
+  } catch {
+    return {}
+  }
+}
+const saveScreen = (repo, search) => {
+  const all = lastScreens()
+  if (all[repo] !== search) localStorage.setItem('lastScreens', JSON.stringify({ ...all, [repo]: search }))
+}
+
 // App holds the selection state (folder, repo, base branch, open file) and lays out sidebar + viewer.
 export default function App() {
   const [tick, setTick] = createSignal(0)
@@ -113,7 +126,14 @@ export default function App() {
       setSel((s) => (s?.kind === 'diff' && !s.commit ? undefined : s)) // an open file stays open, now at b
     })
   }
-  const pickRepo = (path) => path !== repo() && (push(), selectRepo(path))
+  // back in a repo: its last screen (base, viewed branch, tab, open file), unless it was saved under another folder
+  const pickRepo = (path) => {
+    if (path === repo()) return
+    push()
+    const w = lastScreens()[path] !== undefined && fromSearch(lastScreens()[path])
+    if (w && w.root === root()) setWant(w)
+    else selectRepo(path)
+  }
   const pickBase = (b) => {
     push()
     batch(() => {
@@ -173,6 +193,10 @@ export default function App() {
     if (s !== null && s !== location.search) history.replaceState(history.state, '', s || location.pathname)
   }
   createEffect(sync)
+  createEffect(() => {
+    const s = search()
+    if (s !== null) saveScreen(repo(), s)
+  })
   createEffect(() => {
     const name = rootName() ? `${rootName()} · webdiffviewer` : 'webdiffviewer'
     document.title = sel() ? `${lastSegment(sel().path)} · ${name}` : name // names entries in the Back menu
