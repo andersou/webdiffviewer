@@ -61,7 +61,8 @@ export default function SearchPanel(props) {
     }),
   )
   const [res] = createResource(
-    () => props.repo && ask().q.trim() && [props.repo, props.gitRef, props.tick, ask()],
+    // false, not '': createResource only skips the fetch for null/undefined/false
+    () => !!(props.repo && ask().q.trim()) && [props.repo, props.gitRef, props.tick, ask()],
     ([repo, ref, , a]) => json('search', { repo, q: a.q, case: a.case ? 1 : 0, word: a.word ? 1 : 0, regex: a.regex ? 1 : 0, ...(ref && { ref }) }),
   )
   const re = createMemo(() => matcher(ask()))

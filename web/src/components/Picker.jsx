@@ -1,6 +1,6 @@
 import { createEffect, createMemo, createSignal, For, on, onMount, Show } from 'solid-js'
 import { css, cva } from 'styled-system/css'
-import { rank } from '../lib/utils/fuzzy.js'
+import { fuzzyPath, rank } from '../lib/utils/fuzzy.js'
 import FileIcon from './ui/FileIcon.jsx'
 import { muted, name } from './ui/styles.js'
 
@@ -75,7 +75,7 @@ export default function Picker(props) {
   const groups = createMemo(() => {
     let start = 0 // index of the group's first option, for keyboard order across groups
     return (props.groups || [])
-      .map((g) => ({ title: g.title, results: rank(g.items, query(), (it) => it.label).slice(0, g.limit || 200) }))
+      .map((g) => ({ title: g.title, results: rank(g.items, query(), (it) => it.label, fuzzyPath).slice(0, g.limit || 200) }))
       .filter((g) => g.results.length)
       .map((g) => ((start += g.results.length), { ...g, start: start - g.results.length }))
   })

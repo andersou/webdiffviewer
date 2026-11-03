@@ -19,12 +19,23 @@ export function fuzzy(query, text) {
   return { score: score - t.length / 100, idx }
 }
 
+// fuzzyPath is fuzzy for paths, like VS Code's quick open: a query without "/" is tried on the
+// last segment (the file name) first, and a hit there beats any match spread over the folders.
+export function fuzzyPath(query, path) {
+  const cut = path.lastIndexOf('/') + 1
+  if (cut && !query.includes('/')) {
+    const m = fuzzy(query, path.slice(cut))
+    if (m) return { score: m.score + 100, idx: m.idx.map((i) => i + cut) }
+  }
+  return fuzzy(query, path)
+}
+
 // rank returns items whose key matches query, best first, each with its match positions.
-export function rank(items, query, key = (x) => x) {
+export function rank(items, query, key = (x) => x, match = fuzzy) {
   if (!query.trim()) return items.map((item) => ({ item, idx: [] }))
   const out = []
   for (const item of items) {
-    const m = fuzzy(query, key(item))
+    const m = match(query, key(item))
     if (m) out.push({ item, idx: m.idx, score: m.score })
   }
   return out.sort((a, b) => b.score - a.score)
