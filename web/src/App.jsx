@@ -116,6 +116,8 @@ export default function App() {
   // a viewed branch is compared with Base or, without one, with HEAD; the working tree doesn't apply
   const cmpBase = () => (gitRef() ? base() || 'HEAD' : base())
   const cmpWT = () => !gitRef() && withWT()
+  // the branch whose changes are listed: the viewed one, else the checked-out one ("HEAD" when detached)
+  const shownBranch = () => gitRef() || branches.latest?.current || 'HEAD'
   const [pref, setPref] = createSignal(DEFAULT_PREF) // last view (Diff/File/Preview) per kind
   const [textSearch, setTextSearch] = createSignal({ q: '', case: false, word: false, regex: false }) // Search tab, kept across tabs and repos
   const [openHash, setOpenHash] = createSignal() // commit expanded in the Commits tab
@@ -344,7 +346,7 @@ export default function App() {
 
         <div class={treeBox}>
           <Show when={tab() === 'changes'}>
-            <ChangesPanel status={statusList()} base={cmpBase()} withWorktree={cmpWT()} selected={sel()?.key} onSelect={open} />
+            <ChangesPanel status={statusList()} branch={shownBranch()} base={cmpBase()} withWorktree={cmpWT()} selected={sel()?.key} onSelect={open} />
           </Show>
           <Show when={tab() === 'files'}>
             <Tree items={fileItems()} selected={sel()?.key} reveal={sel()?.kind === 'file' ? sel().path : undefined} onSelect={open} badge={(i) => letters().get(i.path)} />
@@ -383,7 +385,7 @@ export default function App() {
           label="Open file"
           placeholder={`Search files in ${lastSegment(repo())}${gitRef() ? ` @ ${gitRef()}` : ''}`}
           groups={[
-            { title: `Changes${cmpBase() ? ` vs ${cmpBase()}` : ''}`, items: changeList().map((c) => ({ ...c, label: c.path, file: true, hint: c.staged ? `${c.status} staged` : c.status })), limit: 50 },
+            { title: `Changes${cmpBase() ? ` ${shownBranch()} vs ${cmpBase()}` : ''}`, items: changeList().map((c) => ({ ...c, label: c.path, file: true, hint: c.staged ? `${c.status} staged` : c.status })), limit: 50 },
             { title: 'Files', items: fileItems().map((f) => ({ ...f, label: f.path, file: true })) },
           ]}
           loading={files.loading && !files.latest && 'Loading files…'}

@@ -16,7 +16,7 @@ export default function ChangesPanel(props) {
       fallback={
         <>
           <h3 class={heading}>
-            vs {props.base} ({compared().length})
+            {props.branch} vs {props.base} ({compared().length})
           </h3>
           <Changes items={compared()} />
         </>
