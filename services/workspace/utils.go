@@ -48,3 +48,23 @@ func worktrees(repo string) []git.Worktree {
 	}
 	return list
 }
+
+// submoduleCheckouts finds p's checkouts inside the worktrees of the repo containing it: a
+// superproject worktree clones its submodules separately, so `git worktree list` in p misses them.
+func submoduleCheckouts(repos []Repo, p string) []git.Worktree {
+	var list []git.Worktree
+	for i := len(repos) - 1; i >= 0; i-- { // sorted paths: the last ancestor is the closest
+		if !inside(repos[i].Path, p) {
+			continue
+		}
+		rel, _ := filepath.Rel(repos[i].Path, p)
+		for _, wt := range repos[i].Worktrees {
+			c := filepath.Join(wt.Path, rel)
+			if _, err := os.Lstat(filepath.Join(c, ".git")); err == nil {
+				list = append(list, git.Worktree{Path: c, Branch: currentBranch(c)})
+			}
+		}
+		break
+	}
+	return list
+}

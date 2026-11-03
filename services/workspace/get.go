@@ -93,7 +93,7 @@ func (w *Workspace) Repos(root string) ([]Repo, error) {
 			continue
 		}
 		repo := Repo{Path: p, Name: displayName(base, p), Branch: currentBranch(p), Worktrees: []git.Worktree{}}
-		for _, wt := range worktrees(p) {
+		for _, wt := range append(worktrees(p), submoduleCheckouts(repos, p)...) {
 			repo.Worktrees = append(repo.Worktrees, wt)
 			allowed[wt.Path] = true
 		}

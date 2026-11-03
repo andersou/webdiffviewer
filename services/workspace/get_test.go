@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -28,4 +29,35 @@ func TestRootStaysInParent(t *testing.T) {
 	if _, err := get(filepath.Join(tmp, "parent")); err == nil {
 		t.Fatal("picker disabled: other roots must be rejected")
 	}
+}
+
+func TestReposListSubmoduleCheckoutsOfWorktrees(t *testing.T) {
+	tmp, _ := filepath.EvalSymlinks(t.TempDir())
+	run := func(dir string, args ...string) {
+		cmd := exec.Command("git", append([]string{"-c", "protocol.file.allow=always", "-c", "user.name=t", "-c", "user.email=t@t"}, args...)...)
+		cmd.Dir = dir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	run(tmp, "init", "-q", "-b", "main", "lib")
+	run(filepath.Join(tmp, "lib"), "commit", "-q", "--allow-empty", "-m", "a")
+	run(tmp, "init", "-q", "-b", "main", "app")
+	app := filepath.Join(tmp, "app")
+	run(app, "submodule", "add", "-q", "../lib", "lib")
+	run(app, "commit", "-q", "-m", "s")
+	run(app, "worktree", "add", "-q", "-b", "feat", filepath.Join(tmp, "app-feat"))
+	run(filepath.Join(tmp, "app-feat"), "submodule", "update", "-q", "--init")
+
+	repos, err := New(app, "", false).Repos("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(tmp, "app-feat", "lib")
+	for _, r := range repos {
+		if r.Path == filepath.Join(app, "lib") && len(r.Worktrees) == 1 && r.Worktrees[0].Path == want {
+			return
+		}
+	}
+	t.Fatalf("lib should list %s as a worktree: %+v", want, repos)
 }
