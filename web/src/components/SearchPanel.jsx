@@ -116,7 +116,7 @@ export default function SearchPanel(props) {
                 <For each={f.lines}>
                   {(l) => (
                     <button
-                      class={row({ selected: props.selected?.key === 'f:' + f.path && props.selected?.line === l.n })}
+                      class={row({ selected: props.selected?.path === f.path && props.selected?.line === l.n })}
                       style={{ 'padding-left': '38px' }}
                       title={`${f.path}:${l.n}`}
                       onClick={() => props.onOpen({ kind: 'file', path: f.path, key: 'f:' + f.path, line: l.n })}

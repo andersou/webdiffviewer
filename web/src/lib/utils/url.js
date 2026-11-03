@@ -10,9 +10,11 @@ export const isHtml = (path) => /\.html?$/i.test(path || '')
 export const views = (sel) => [...(sel?.kind === 'diff' ? ['diff'] : []), 'file', ...(isMd(sel?.path) || isHtml(sel?.path) ? ['preview'] : [])]
 // markdown and HTML open as preview from the Explorer and as diff from Changes
 export const DEFAULT_PREF = { file: 'preview', diff: 'diff' }
-// viewOf is the view shown for sel, given the last choice per kind
+// viewOf is the view shown for sel: the one it was opened with (sel.view, e.g. File for a search
+// result), else the last choice per kind
 export const viewOf = (sel, pref) => {
   const v = views(sel)
+  if (v.includes(sel?.view)) return sel.view
   return v.includes(pref[sel?.kind]) ? pref[sel?.kind] : v[0]
 }
 

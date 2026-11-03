@@ -3,7 +3,8 @@ import { css, cva } from 'styled-system/css'
 
 const CHUNK = 200 // rows per block; off-screen blocks are skipped by content-visibility
 
-const code = css({ flex: 1, overflow: 'auto', fontFamily: 'code', fontSize: '12px', lineHeight: '20px', '& .hl': { bg: 'rgba(234, 92, 0, 0.22)' } })
+// .hl: the line opened from Search, in blue so it can't be read as an added (green) or removed (red) line
+const code = css({ flex: 1, overflow: 'auto', fontFamily: 'code', fontSize: '12px', lineHeight: '20px', '& .hl': { bg: 'rgba(0, 127, 212, 0.32)', boxShadow: 'inset 3px 0 token(colors.ui.accent)' } })
 const chunkCls = css({ contentVisibility: 'auto', minW: 'max-content' })
 const ln = css({ w: '50px', flex: 'none', textAlign: 'right', pr: '8px', color: 'ui.faint', userSelect: 'none', mdDown: { w: '34px', pr: '4px' } })
 const txt = css({ px: '12px' })
@@ -28,14 +29,14 @@ const chunks = (rows) => {
 }
 
 // CodeView renders file or diff rows ({ t, o, n, text, html }) with line numbers. With line (a
-// whole file, one row per line), that line is marked and scrolled into view.
+// line number on the new side), that row is marked and scrolled into view when it is shown.
 export default function CodeView(props) {
   let el
   createEffect(() => {
-    const i = (props.line || 0) - 1
     const rows = props.rows // re-run when another file's rows render
+    const i = props.line ? rows.findIndex((r) => r.n === props.line && r.t !== 'del') : -1
     el.querySelector('.hl')?.classList.remove('hl')
-    if (i < 0 || i >= rows.length) return
+    if (i < 0) return
     // rows sit in blocks of CHUNK; reaching the row directly avoids a reactive flag on every line
     const r = el.children[Math.floor(i / CHUNK)]?.children[i % CHUNK]
     r?.classList.add('hl')

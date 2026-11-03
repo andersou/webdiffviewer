@@ -196,7 +196,7 @@ export default function App() {
       ref: gitRef(),
       commit: openHash(),
       sel: s,
-      view: v !== viewOf(s, DEFAULT_PREF) && v,
+      view: v !== viewOf({ ...s, view: undefined }, DEFAULT_PREF) && v, // against the default without the item's starting view
     })
   }
   // sync writes the state into the current history entry (keeping its state, e.g. the phone marker)
@@ -270,7 +270,15 @@ export default function App() {
   )
   const [folders] = createResource(() => picker() === 'folders', () => json('folders'))
   // a search result opens as the file's text (not a preview), so it can scroll to the line
-  const openLine = (it) => (setPref((p) => ({ ...p, file: 'file' })), open(it))
+  // a view button: the new choice for this kind, and the item's own starting view no longer applies
+  const pickView = (p) => batch(() => (setPref(p), setSel((s) => (s?.view ? { ...s, view: undefined } : s))))
+  // a search result opens at its line in the File view; a changed file opens as that change, so Diff
+  // is one click away. Working-tree changes win over staged ones: git grep read the file on disk.
+  const openLine = (it) => {
+    const changes = changeList().filter((c) => c.path === it.path)
+    const c = changes.find((x) => !x.staged) || changes[0]
+    open({ ...(c || it), line: it.line, view: 'file' })
+  }
   const quickOpen = (it) => {
     setPicker()
     if (it.kind === 'folder') return openRoot(it.path)
@@ -382,7 +390,7 @@ export default function App() {
         />
       </Show>
       <main class={main}>
-        <Viewer repo={repo()} gitRef={gitRef()} sel={sel()} tick={tick()} pref={pref()} onPref={setPref} onBack={showListPane} onOpen={(path) => open({ kind: 'file', path, key: 'f:' + path })} />
+        <Viewer repo={repo()} gitRef={gitRef()} sel={sel()} tick={tick()} pref={pref()} onPref={pickView} onBack={showListPane} onOpen={(path) => open({ kind: 'file', path, key: 'f:' + path })} />
       </main>
     </div>
   )

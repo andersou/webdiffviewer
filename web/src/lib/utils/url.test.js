@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { baseItems, changeItems } from '../git/changes.js'
-import { findRepo, fromSearch, relPath, toSearch } from './url.js'
+import { findRepo, fromSearch, relPath, toSearch, viewOf } from './url.js'
 
 const H = 'cfcbd348'.padEnd(40, '0')
 
@@ -57,4 +57,12 @@ test('relPath and findRepo', () => {
   assert.equal(findRepo(repos, '/u/git/app', '../app-feature'), '/u/git/app-feature')
   assert.equal(findRepo(repos, '/u/git/app', '.'), '/u/git/app')
   assert.equal(findRepo(repos, '/u/git/app', 'gone'), undefined)
+})
+
+test('an item opened with a view keeps it until a view is picked', () => {
+  const pref = { file: 'preview', diff: 'diff' }
+  assert.equal(viewOf({ kind: 'diff', path: 'a.py', view: 'file' }, pref), 'file') // a search result in a changed file
+  assert.equal(viewOf({ kind: 'diff', path: 'a.py' }, pref), 'diff')
+  assert.equal(viewOf({ kind: 'file', path: 'a.md', view: 'file' }, pref), 'file')
+  assert.equal(viewOf({ kind: 'file', path: 'a.py', view: 'diff' }, pref), 'file') // a view the item can't show is ignored
 })
