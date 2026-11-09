@@ -16,7 +16,7 @@ func (rt *Router) getFiles(w http.ResponseWriter, r *http.Request) {
 		helpers.Fail(w, err)
 		return
 	}
-	list, err := files.List(repo, r.URL.Query().Get("ref"), !rt.ws.CheckIgnore())
+	list, err := files.List(repo, r.URL.Query().Get("ref"), !rt.ws.CheckIgnore(), rt.ws.Skip())
 	if err != nil {
 		helpers.Fail(w, err)
 		return

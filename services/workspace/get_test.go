@@ -15,7 +15,7 @@ func TestRootStaysInParent(t *testing.T) {
 	if err := os.Symlink(outside, filepath.Join(parent, "escape")); err != nil {
 		t.Logf("no symlink support (%v); skipping that case", err) // Windows without developer mode
 	}
-	w := New(filepath.Join(parent, "repo"), parent, false)
+	w := New(filepath.Join(parent, "repo"), parent, false, nil)
 	get := w.Root
 	if got, err := get(filepath.Join(parent, "repo")); err != nil || got != filepath.Join(parent, "repo") {
 		t.Fatalf("inside parent: %q %v", got, err)
@@ -49,7 +49,7 @@ func TestReposListSubmoduleCheckoutsOfWorktrees(t *testing.T) {
 	run(app, "worktree", "add", "-q", "-b", "feat", filepath.Join(tmp, "app-feat"))
 	run(filepath.Join(tmp, "app-feat"), "submodule", "update", "-q", "--init")
 
-	repos, err := New(app, "", false).Repos("")
+	repos, err := New(app, "", false, nil).Repos("")
 	if err != nil {
 		t.Fatal(err)
 	}

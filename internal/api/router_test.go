@@ -72,7 +72,7 @@ func TestAPI(t *testing.T) {
 	repo := newRepo(t)
 	wt := commitOnFeature(t, repo)
 	web := fstest.MapFS{"index.html": {Data: []byte("<html>")}}
-	h := New(workspace.New(repo, "", false), web, []string{"mac.local"})
+	h := New(workspace.New(repo, "", false, []string{"node_modules"}), web, []string{"mac.local"})
 	do := func(method, target, contentType, body string) *httptest.ResponseRecorder {
 		req := httptest.NewRequest(method, target, strings.NewReader(body))
 		req.Host = "127.0.0.1:8080"
@@ -149,7 +149,7 @@ func TestAPI(t *testing.T) {
 	// gitignored files are served by default...
 	expect("ignored file, default", get("/api/file", q("path", ".env")), http.StatusOK, "hunter2")
 	// ...and hidden with --check-ignore
-	strict := New(workspace.New(repo, "", true), web, nil)
+	strict := New(workspace.New(repo, "", true, nil), web, nil)
 	for name, target := range map[string]string{
 		"file": "/api/file?" + q("path", ".env").Encode(),
 		"raw":  "/api/raw?" + q("path", ".env").Encode(),

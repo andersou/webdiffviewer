@@ -11,13 +11,17 @@ import (
 )
 
 // New serves base and, if parent != "", any repo under parent. Both must be real (symlink-free)
-// paths. With checkIgnore, gitignored files are never served.
-func New(base, parent string, checkIgnore bool) *Workspace {
-	return &Workspace{base: base, parent: parent, checkIgnore: checkIgnore, allowed: map[string]bool{}}
+// paths. With checkIgnore, gitignored files are never served. skip names what the Explorer leaves
+// out of the gitignored files (node_modules…).
+func New(base, parent string, checkIgnore bool, skip []string) *Workspace {
+	return &Workspace{base: base, parent: parent, checkIgnore: checkIgnore, skip: skip, allowed: map[string]bool{}}
 }
 
 // CheckIgnore reports whether gitignored files must be hidden (--check-ignore).
 func (w *Workspace) CheckIgnore() bool { return w.checkIgnore }
+
+// Skip is the --skip-path names.
+func (w *Workspace) Skip() []string { return w.skip }
 
 func (w *Workspace) Config() Config { return Config{Base: w.base, Parent: w.parent} }
 

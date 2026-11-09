@@ -9,9 +9,10 @@ import (
 )
 
 type Workspace struct {
-	base        string // folder given on the command line
-	parent      string // --parent-dir: other folders the UI may open; "" disables the picker
-	checkIgnore bool   // --check-ignore: never serve gitignored files (.env…)
+	base        string   // folder given on the command line
+	parent      string   // --parent-dir: other folders the UI may open; "" disables the picker
+	checkIgnore bool     // --check-ignore: never serve gitignored files (.env…)
+	skip        []string // --skip-path: folder/file names left out of the Explorer's gitignored files
 	mu          sync.RWMutex
 	allowed     map[string]bool // repo/worktree paths the API may touch, grown by Repos
 }

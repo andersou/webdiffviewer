@@ -98,6 +98,7 @@ webdiffviewer -host 0.0.0.0                  # reachable on the network (see Sec
 | `-port` | `8080` | Port |
 | `-parent-dir` | — | Folder whose repos the picker can open |
 | `-check-ignore` | off | Never serve gitignored files (`.env` and other local secrets) |
+| `-skip-path` | `node_modules,.venv` | Comma-separated folder/file names left out of the gitignored files the Explorer lists |
 | `-allowed-hosts` | — | Comma-separated host names accepted besides IPs and `localhost`, e.g. `mac.local` or a reverse-proxy domain |
 | `-version` | — | Print the version and exit |
 | `[dir]` | `.` | Folder to start in |

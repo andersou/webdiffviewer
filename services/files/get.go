@@ -3,10 +3,12 @@ package files
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/andersou/webdiffviewer/internal/git"
@@ -14,8 +16,9 @@ import (
 )
 
 // List returns tracked and untracked (not ignored) files, or with ref the files of that branch.
-// With withIgnored (and no ref), gitignored files are listed apart, except hidden ones and node_modules.
-func List(repo, ref string, withIgnored bool) (Files, error) {
+// With withIgnored (and no ref), gitignored files are listed apart, except hidden ones and those
+// named in skip.
+func List(repo, ref string, withIgnored bool, skip []string) (Files, error) {
 	args := []string{"ls-files", "-z", "--cached", "--others", "--exclude-standard"}
 	if ref != "" {
 		h, err := git.ResolveRef(repo, ref)
@@ -35,7 +38,7 @@ func List(repo, ref string, withIgnored bool) (Files, error) {
 		}
 	}
 	if withIgnored && ref == "" {
-		res.Ignored, err = ignored(repo)
+		res.Ignored, err = ignored(repo, skip)
 	}
 	return res, err
 }
@@ -45,14 +48,14 @@ func List(repo, ref string, withIgnored bool) (Files, error) {
 const maxIgnored = 20000
 
 // ignored lists gitignored files. --directory makes git stop at wholly ignored folders, which are
-// walked here so node_modules, hidden folders and nested repos are skipped without reading them.
-func ignored(repo string) ([]string, error) {
+// walked here so hidden folders, nested repos and the skip names are left out without reading them.
+func ignored(repo string, names []string) ([]string, error) {
 	out, err := git.Run(repo, "ls-files", "-z", "--others", "--ignored", "--exclude-standard", "--directory")
 	if err != nil {
 		return nil, err
 	}
 	list := []string{}
-	skip := func(name string) bool { return strings.HasPrefix(name, ".") || name == "node_modules" }
+	skip := func(name string) bool { return strings.HasPrefix(name, ".") || slices.Contains(names, name) }
 	for _, e := range strings.Split(string(out), "\x00") {
 		dir := strings.HasSuffix(e, "/")
 		e = strings.TrimSuffix(e, "/")
@@ -81,6 +84,22 @@ func ignored(repo string) ([]string, error) {
 		})
 	}
 	return list, nil
+}
+
+// ParseSkip turns the --skip-path value "node_modules, .venv" into names. Each must be a single
+// folder or file name: the Explorer compares them with every path segment, not with whole paths.
+func ParseSkip(s string) ([]string, error) {
+	names := []string{}
+	for _, n := range strings.Split(s, ",") {
+		switch n = strings.TrimSpace(n); {
+		case n == "":
+		case n == "." || n == ".." || strings.ContainsAny(n, `/\`):
+			return nil, fmt.Errorf("--skip-path: %q is not a folder or file name", n)
+		default:
+			names = append(names, n)
+		}
+	}
+	return names, nil
 }
 
 // Read returns a text file from the working tree (rev ""), or the version git stores at

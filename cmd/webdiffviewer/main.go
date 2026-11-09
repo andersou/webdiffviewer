@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/andersou/webdiffviewer/internal/api"
+	"github.com/andersou/webdiffviewer/services/files"
 	"github.com/andersou/webdiffviewer/services/workspace"
 	"github.com/andersou/webdiffviewer/web"
 )
@@ -25,10 +26,11 @@ func main() {
 	port := flag.Int("port", 8080, "port to listen on")
 	parentDir := flag.String("parent-dir", "", "let the UI open any git repo under this folder (Ctrl/Cmd+K)")
 	checkIgnore := flag.Bool("check-ignore", false, "never serve gitignored files (.env and other local secrets)")
+	skipPath := flag.String("skip-path", "node_modules,.venv", "comma-separated folder/file names the Explorer leaves out of the gitignored files")
 	allowedHosts := flag.String("allowed-hosts", "", "comma-separated host names accepted besides IPs and localhost (e.g. mac.local)")
 	showVersion := flag.Bool("version", false, "print the version and exit")
 	flag.Usage = func() {
-		os.Stderr.WriteString("usage: webdiffviewer [-host H] [-port P] [-parent-dir D] [-check-ignore] [-allowed-hosts h1,h2] [dir]\n")
+		os.Stderr.WriteString("usage: webdiffviewer [-host H] [-port P] [-parent-dir D] [-check-ignore] [-skip-path n1,n2] [-allowed-hosts h1,h2] [dir]\n")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -52,9 +54,14 @@ func main() {
 		}
 	}
 
+	skip, err := files.ParseSkip(*skipPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	addr := net.JoinHostPort(*host, strconv.Itoa(*port))
 	log.Printf("webdiffviewer: %s -> http://%s", base, addr)
-	log.Fatal(http.ListenAndServe(addr, api.New(workspace.New(base, parent, *checkIgnore), web.Dist(), splitList(*allowedHosts))))
+	log.Fatal(http.ListenAndServe(addr, api.New(workspace.New(base, parent, *checkIgnore, skip), web.Dist(), splitList(*allowedHosts))))
 }
 
 // realPath makes p absolute and resolves symlinks: git reports real paths (e.g. /private/var, not /var)
