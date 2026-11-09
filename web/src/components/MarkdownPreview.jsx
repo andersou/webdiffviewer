@@ -1,6 +1,6 @@
 import { createEffect, createResource, createSignal, For, onCleanup, Show } from 'solid-js'
 import { css, cva } from 'styled-system/css'
-import { text } from '../lib/api/client.js'
+import { rawUrl, text } from '../lib/api/client.js'
 import { resolvePath } from '../lib/utils/links.js'
 import { errorBox } from './ui/styles.js'
 import { renderDiagrams, renderMarkdown } from '../lib/markdown/render.js'
@@ -125,7 +125,7 @@ export default function MarkdownPreview(props) {
     mdEl.innerHTML = r.html // set here (not via JSX) so links/images below always start from fresh DOM
     for (const img of mdEl.querySelectorAll('img[src]')) {
       const p = resolvePath(from, img.getAttribute('src'))
-      if (p) img.src = `/api/raw?${new URLSearchParams(rev ? { repo, path: p, rev } : { repo, path: p })}`
+      if (p) img.src = rawUrl(repo, p, rev)
     }
     // in-page links ([TOC], footnotes) scroll here; letting the browser change the hash would add a
     // history entry, and going back over it would close the file on phones

@@ -1,6 +1,6 @@
 import { createResource, Show } from 'solid-js'
 import { css } from 'styled-system/css'
-import { text } from '../lib/api/client.js'
+import { rawUrl, text } from '../lib/api/client.js'
 import { resolvePath } from '../lib/utils/links.js'
 import { errorBox } from './ui/styles.js'
 
@@ -15,7 +15,7 @@ function page(src, repo, path, rev) {
   for (const [tag, attr] of ASSETS) {
     for (const el of doc.querySelectorAll(`${tag}[${attr}]`)) {
       const p = resolvePath(path, el.getAttribute(attr))
-      if (p) el.setAttribute(attr, `/api/raw?${new URLSearchParams(rev ? { repo, path: p, rev } : { repo, path: p })}`)
+      if (p) el.setAttribute(attr, rawUrl(repo, p, rev))
     }
   }
   doc.head.prepend(Object.assign(doc.createElement('base'), { target: '_blank' }))

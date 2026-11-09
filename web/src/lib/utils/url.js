@@ -6,15 +6,24 @@ const VIEWS = ['diff', 'file', 'blame', 'preview']
 const isMd = (path) => /\.(md|markdown|mdx)$/i.test(path || '')
 export const isHtml = (path) => /\.html?$/i.test(path || '')
 
+const isImage = (path) => /\.(png|jpe?g|gif|webp|avif|bmp|ico)$/i.test(path || '')
+export const isVideo = (path) => /\.(mp4|webm|ogv|mov|m4v)$/i.test(path || '')
+export const isMedia = (path) => isImage(path) || isVideo(path) || /\.svg$/i.test(path || '')
+
 // views lists what a selection can show: changes also offer the whole file; files with history add
-// blame (not untracked or deleted ones); markdown and HTML add a preview.
-export const views = (sel) => [
-  ...(sel?.kind === 'diff' ? ['diff'] : []),
-  'file',
-  ...(sel?.untracked || sel?.status?.startsWith('D') ? [] : ['blame']),
-  ...(isMd(sel?.path) || isHtml(sel?.path) ? ['preview'] : []),
-]
-// markdown and HTML open as preview from the Explorer and as diff from Changes
+// blame (not untracked or deleted ones); markdown, HTML, images, SVG and video add a preview.
+// Binary media has no text to show, so it only previews (a deleted one only diffs).
+export const views = (sel) => {
+  const deleted = sel?.status?.startsWith('D')
+  if (isImage(sel?.path) || isVideo(sel?.path)) return sel.kind === 'diff' && deleted ? ['diff'] : ['preview']
+  return [
+    ...(sel?.kind === 'diff' ? ['diff'] : []),
+    'file',
+    ...(sel?.untracked || deleted ? [] : ['blame']),
+    ...(isMd(sel?.path) || isHtml(sel?.path) || isMedia(sel?.path) ? ['preview'] : []),
+  ]
+}
+// markdown, HTML and media open as preview from the Explorer and as diff from Changes
 export const DEFAULT_PREF = { file: 'preview', diff: 'diff' }
 // viewOf is the view shown for sel: the one it was opened with (sel.view, e.g. File for a search
 // result), else the last choice per kind

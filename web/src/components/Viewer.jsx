@@ -1,4 +1,4 @@
-import { createResource, For, Show } from 'solid-js'
+import { createResource, For, Match, Show, Switch } from 'solid-js'
 import { css, cva } from 'styled-system/css'
 import { json, text } from '../lib/api/client.js'
 import MarkdownPreview, { THEMES } from './MarkdownPreview.jsx'
@@ -7,8 +7,9 @@ import { createStoredSignal } from '../hooks/createStoredSignal.js'
 import CodeView from './CodeView.jsx'
 import { parseDiff } from '../lib/git/diff.js'
 import { highlight } from '../lib/highlight/highlight.js'
-import { isHtml, viewOf, views } from '../lib/utils/url.js'
+import { isHtml, isMedia, viewOf, views } from '../lib/utils/url.js'
 import HtmlPreview from './HtmlPreview.jsx'
+import MediaPreview from './MediaPreview.jsx'
 
 const head = css({
   px: '14px',
@@ -43,7 +44,7 @@ const rev = (s, ref) => s.commit || ref || (s.kind !== 'diff' ? '' : s.staged ? 
 const where = (s, ref) =>
   s.kind === 'file' ? (ref ? ` (${ref})` : '') : ref && !s.commit ? ` (${ref} vs ${s.base})` : s.commit ? ` (commit ${s.commit.slice(0, 7)})` : s.base ? ` (vs ${s.base})` : s.staged ? ' (staged)' : s.untracked ? ' (untracked)' : ' (working tree)'
 
-// Viewer shows the selected file or change as Diff, File or (markdown/HTML) Preview.
+// Viewer shows the selected file or change as Diff, File or (markdown/HTML/media) Preview.
 export default function Viewer(props) {
   const view = () => viewOf(props.sel, props.pref)
   const preview = () => !!props.sel && view() === 'preview'
@@ -139,23 +140,29 @@ export default function Viewer(props) {
       <Show
         when={!preview()}
         fallback={
-          <Show
-            when={!isHtml(props.sel.path)}
-            fallback={<HtmlPreview repo={props.repo} path={props.sel.path} rev={rev(props.sel, props.gitRef)} tick={props.tick} />}
+          <Switch
+            fallback={
+              <MarkdownPreview
+                repo={props.repo}
+                path={props.sel.path}
+                rev={rev(props.sel, props.gitRef)}
+                tick={props.tick}
+                theme={theme()}
+                onTheme={setTheme}
+                showToc={showToc()}
+                onToggleToc={() => setShowToc((on) => !on)}
+                onCloseToc={() => setShowToc(false)}
+                onOpen={props.onOpen}
+              />
+            }
           >
-            <MarkdownPreview
-              repo={props.repo}
-              path={props.sel.path}
-              rev={rev(props.sel, props.gitRef)}
-              tick={props.tick}
-              theme={theme()}
-              onTheme={setTheme}
-              showToc={showToc()}
-              onToggleToc={() => setShowToc((on) => !on)}
-              onCloseToc={() => setShowToc(false)}
-              onOpen={props.onOpen}
-            />
-          </Show>
+            <Match when={isHtml(props.sel.path)}>
+              <HtmlPreview repo={props.repo} path={props.sel.path} rev={rev(props.sel, props.gitRef)} tick={props.tick} />
+            </Match>
+            <Match when={isMedia(props.sel.path)}>
+              <MediaPreview repo={props.repo} path={props.sel.path} rev={rev(props.sel, props.gitRef)} tick={props.tick} />
+            </Match>
+          </Switch>
         }
       >
         <Show when={!data.error} fallback={<div class={errorBox}>{data.error?.message}</div>}>

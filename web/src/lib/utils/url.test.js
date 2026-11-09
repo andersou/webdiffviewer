@@ -72,4 +72,8 @@ test('blame is offered for files with history only', () => {
   assert.deepEqual(views({ kind: 'file', path: 'a.md' }), ['file', 'blame', 'preview'])
   assert.deepEqual(views({ kind: 'diff', path: 'n.py', untracked: true }), ['diff', 'file'])
   assert.deepEqual(views({ kind: 'diff', path: 'gone.py', status: 'D•' }), ['diff', 'file'])
+  assert.deepEqual(views({ kind: 'diff', path: 'a.PNG' }), ['preview'])
+  assert.deepEqual(views({ kind: 'file', path: 'clip.mp4' }), ['preview'])
+  assert.deepEqual(views({ kind: 'diff', path: 'gone.jpg', status: 'D' }), ['diff'])
+  assert.deepEqual(views({ kind: 'file', path: 'logo.svg' }), ['file', 'blame', 'preview'])
 })
