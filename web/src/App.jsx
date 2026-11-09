@@ -264,7 +264,10 @@ export default function App() {
     ([r, , b, wt, ref]) => json('status', b ? { repo: r, base: b, wt: wt ? 1 : 0, ref } : { repo: r }),
   )
   const statusList = () => (status.error ? [] : status.latest || []) // .latest throws after an error (e.g. a deleted base)
-  const fileItems = createMemo(() => (files.error ? [] : files.latest || []).map((path) => ({ path, key: 'f:' + path, kind: 'file' })))
+  const fileItems = createMemo(() => {
+    const f = (!files.error && files.latest) || { files: [], ignored: [] }
+    return [...f.files.map((path) => ({ path, key: 'f:' + path, kind: 'file' })), ...f.ignored.map((path) => ({ path, key: 'f:' + path, kind: 'file', ignored: true }))]
+  })
   const letters = createMemo(() => statusByPath(statusList()))
   // Cmd+P: the sidebar's changes (open as a diff) and the Explorer's files (open as the file)
   const changeList = createMemo(() =>

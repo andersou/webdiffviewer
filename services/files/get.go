@@ -5,6 +5,8 @@ import (
 	"errors"
 	"io/fs"
 	"os"
+	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/andersou/webdiffviewer/internal/git"
@@ -12,26 +14,73 @@ import (
 )
 
 // List returns tracked and untracked (not ignored) files, or with ref the files of that branch.
-func List(repo, ref string) ([]string, error) {
+// With withIgnored (and no ref), gitignored files are listed apart, except hidden ones and node_modules.
+func List(repo, ref string, withIgnored bool) (Files, error) {
 	args := []string{"ls-files", "-z", "--cached", "--others", "--exclude-standard"}
 	if ref != "" {
 		h, err := git.ResolveRef(repo, ref)
 		if err != nil {
-			return nil, apperr.BadRequest(err.Error())
+			return Files{}, apperr.BadRequest(err.Error())
 		}
 		args = []string{"ls-tree", "-r", "-z", "--name-only", "--full-tree", h}
 	}
 	out, err := git.Run(repo, args...)
 	if err != nil {
-		return nil, err
+		return Files{}, err
 	}
-	files := []string{}
+	res := Files{Files: []string{}, Ignored: []string{}}
 	for _, f := range strings.Split(string(out), "\x00") {
-		if f != "" && (len(files) == 0 || files[len(files)-1] != f) { // ls-files repeats unmerged paths
-			files = append(files, f)
+		if f != "" && (len(res.Files) == 0 || res.Files[len(res.Files)-1] != f) { // ls-files repeats unmerged paths
+			res.Files = append(res.Files, f)
 		}
 	}
-	return files, nil
+	if withIgnored && ref == "" {
+		res.Ignored, err = ignored(repo)
+	}
+	return res, err
+}
+
+// maxIgnored caps the ignored list.
+// shortcut: a huge build folder is cut at this many files, list folders lazily if that bites.
+const maxIgnored = 20000
+
+// ignored lists gitignored files. --directory makes git stop at wholly ignored folders, which are
+// walked here so node_modules, hidden folders and nested repos are skipped without reading them.
+func ignored(repo string) ([]string, error) {
+	out, err := git.Run(repo, "ls-files", "-z", "--others", "--ignored", "--exclude-standard", "--directory")
+	if err != nil {
+		return nil, err
+	}
+	list := []string{}
+	skip := func(name string) bool { return strings.HasPrefix(name, ".") || name == "node_modules" }
+	for _, e := range strings.Split(string(out), "\x00") {
+		dir := strings.HasSuffix(e, "/")
+		e = strings.TrimSuffix(e, "/")
+		if e == "" || skip(path.Base(e)) || len(list) >= maxIgnored {
+			continue
+		}
+		if !dir {
+			list = append(list, e)
+			continue
+		}
+		filepath.WalkDir(filepath.Join(repo, e), func(p string, d fs.DirEntry, err error) error {
+			if err != nil || len(list) >= maxIgnored {
+				return filepath.SkipDir
+			}
+			if d.IsDir() {
+				if _, err := os.Lstat(filepath.Join(p, ".git")); err == nil || skip(d.Name()) {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if !skip(d.Name()) {
+				rel, _ := filepath.Rel(repo, p)
+				list = append(list, filepath.ToSlash(rel))
+			}
+			return nil
+		})
+	}
+	return list, nil
 }
 
 // Read returns a text file from the working tree (rev ""), or the version git stores at

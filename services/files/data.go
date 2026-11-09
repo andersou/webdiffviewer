@@ -5,6 +5,12 @@ package files
 // MaxSize is the largest text file Read returns.
 const MaxSize = 5 << 20
 
+// Files is the Explorer list: tracked and untracked files, and the gitignored ones apart.
+type Files struct {
+	Files   []string `json:"files"`
+	Ignored []string `json:"ignored"`
+}
+
 // BlameCommit is what blame shows about the commit that last changed a line.
 type BlameCommit struct {
 	Author  string `json:"author"`

@@ -5,8 +5,10 @@ import FileIcon from './ui/FileIcon.jsx'
 import { badge, name, row } from './ui/styles.js'
 
 const chev = css({ w: '10px', color: '#999' })
+const dim = css({ opacity: 0.55 })
 
 // items: [{ path, ... }]; folders are derived from the paths and rendered lazily (only when expanded).
+// A folder is dimmed, like its files, when everything in it is gitignored (item.ignored).
 function build(items) {
   const root = { children: new Map() }
   for (const item of items) {
@@ -14,7 +16,8 @@ function build(items) {
     let node = root
     for (let i = 0; i < parts.length - 1; i++) {
       let child = node.children.get(parts[i])
-      if (!child) node.children.set(parts[i], (child = { name: parts[i], path: parts.slice(0, i + 1).join('/'), children: new Map() }))
+      if (!child) node.children.set(parts[i], (child = { name: parts[i], path: parts.slice(0, i + 1).join('/'), children: new Map(), ignored: true }))
+      child.ignored &&= !!item.ignored
       node = child
     }
     node.children.set(parts.at(-1), { name: parts.at(-1), item })
@@ -37,7 +40,7 @@ export default function Tree(props) {
       when={p.node.children}
       fallback={
         <button
-          class={row({ selected: props.selected === p.node.item.key })}
+          class={`${row({ selected: props.selected === p.node.item.key })} ${p.node.item.ignored ? dim : ''}`}
           style={{ 'padding-left': `${p.depth * 12 + 22}px` }}
           title={p.node.item.path}
           ref={(el) => props.reveal === p.node.item.path && queueMicrotask(() => el.scrollIntoView({ block: 'nearest' }))}
@@ -51,7 +54,7 @@ export default function Tree(props) {
         </button>
       }
     >
-      <button class={row()} style={{ 'padding-left': `${p.depth * 12 + 6}px` }} onClick={() => setOpen(p.node.path, !isOpen(p.node.path))}>
+      <button class={`${row()} ${p.node.ignored ? dim : ''}`} style={{ 'padding-left': `${p.depth * 12 + 6}px` }} onClick={() => setOpen(p.node.path, !isOpen(p.node.path))}>
         <span class={chev}>{isOpen(p.node.path) ? '▾' : '▸'}</span>
         <FileIcon folder path={p.node.path} open={isOpen(p.node.path)} />
         <span class={name}>{p.node.name}</span>

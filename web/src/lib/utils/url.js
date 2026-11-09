@@ -11,7 +11,7 @@ export const isVideo = (path) => /\.(mp4|webm|ogv|mov|m4v)$/i.test(path || '')
 export const isMedia = (path) => isImage(path) || isVideo(path) || /\.svg$/i.test(path || '')
 
 // views lists what a selection can show: changes also offer the whole file; files with history add
-// blame (not untracked or deleted ones); markdown, HTML, images, SVG and video add a preview.
+// blame (not untracked, ignored or deleted ones); markdown, HTML, images, SVG and video add a preview.
 // Binary media has no text to show, so it only previews (a deleted one only diffs).
 export const views = (sel) => {
   const deleted = sel?.status?.startsWith('D')
@@ -19,7 +19,7 @@ export const views = (sel) => {
   return [
     ...(sel?.kind === 'diff' ? ['diff'] : []),
     'file',
-    ...(sel?.untracked || deleted ? [] : ['blame']),
+    ...(sel?.untracked || sel?.ignored || deleted ? [] : ['blame']),
     ...(isMd(sel?.path) || isHtml(sel?.path) || isMedia(sel?.path) ? ['preview'] : []),
   ]
 }

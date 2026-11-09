@@ -37,8 +37,14 @@ func newRepo(t *testing.T) string {
 	write("b.txt", "BEE\n")
 	run("add", "b.txt")
 	write("new.txt", "new\n")
-	write(".gitignore", ".env\n")
+	write(".gitignore", ".env\nout/\nnode_modules/\n")
 	write(".env", "SECRET=hunter2\n")
+	// ignored folders: out/ is listed in the Explorer, node_modules is not
+	for _, d := range []string{"out/clips", "node_modules/x"} {
+		os.MkdirAll(filepath.Join(dir, d), 0o755)
+	}
+	write("out/clips/01.mp4", "mp4")
+	write("node_modules/x/index.js", "js")
 	run("config", "remote.origin.url", "https://user:TOKEN@example.com/x.git")
 	// a feature branch with one commit, checked out in a worktree, to compare against main
 	run("worktree", "add", "-q", "-b", "feature", filepath.Join(dir, "..", filepath.Base(dir)+"-feature"))
@@ -108,6 +114,11 @@ func TestAPI(t *testing.T) {
 	}
 	expect("branches", get("/api/branches", q()), http.StatusOK, `"current":"main"`)
 	expect("files", get("/api/files", q()), http.StatusOK, "new.txt")
+	var list struct{ Files, Ignored []string }
+	json.Unmarshal(get("/api/files", q()).Body.Bytes(), &list)
+	if strings.Join(list.Ignored, ",") != "out/clips/01.mp4" { // not .env (hidden) nor node_modules
+		t.Errorf("ignored files: got %v, want [out/clips/01.mp4]", list.Ignored)
+	}
 	expect("diff", get("/api/diff", q("path", "a.txt")), http.StatusOK, "+two")
 	expect("staged diff", get("/api/diff", q("path", "b.txt", "staged", "1")), http.StatusOK, "+BEE")
 	expect("untracked diff", get("/api/diff", q("path", "new.txt", "untracked", "1")), http.StatusOK, "+new")
@@ -154,6 +165,13 @@ func TestAPI(t *testing.T) {
 		if rec.Code != http.StatusNotFound || strings.Contains(rec.Body.String(), "hunter2") {
 			t.Errorf("--check-ignore %s: got %d %q, want 404 without the secret", name, rec.Code, rec.Body.String())
 		}
+	}
+	strictList := httptest.NewRequest("GET", "/api/files?"+q().Encode(), nil)
+	strictList.Host = "127.0.0.1"
+	rec := httptest.NewRecorder()
+	strict.ServeHTTP(rec, strictList)
+	if !strings.Contains(rec.Body.String(), `"ignored":[]`) {
+		t.Errorf("--check-ignore list: got %q, want no ignored files", rec.Body.String())
 	}
 
 	// branch comparison, from the feature worktree against main
