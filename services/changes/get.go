@@ -2,6 +2,7 @@ package changes
 
 import (
 	"errors"
+	"os"
 	"os/exec"
 	"path/filepath"
 
@@ -56,6 +57,17 @@ func Diff(repo string, q DiffQuery) ([]byte, error) {
 	}
 	if q.Untracked && q.HideIgnored && git.IsIgnored(repo, q.Path) { // --no-index would print any file, .env included
 		return nil, apperr.NotFound("file not found")
+	}
+	if q.Untracked { // --no-index follows symlinked folders out of the repo; Lstat in a Root refuses them
+		root, err := os.OpenRoot(repo)
+		if err != nil {
+			return nil, err
+		}
+		_, err = root.Lstat(q.Path)
+		root.Close()
+		if err != nil {
+			return nil, apperr.NotFound("file not found")
+		}
 	}
 	args, err := diffArgs(repo, q)
 	if err != nil {

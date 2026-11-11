@@ -135,6 +135,13 @@ func TestAPI(t *testing.T) {
 
 	// protections
 	expect("path escape", get("/api/file", q("path", "../secret")), http.StatusBadRequest, "bad path")
+	os.WriteFile(filepath.Join(repo, "..", "secret.txt"), []byte("TOPSECRET"), 0o644)
+	if os.Symlink(filepath.Dir(repo), filepath.Join(repo, "up")) == nil { // Windows may lack the symlink privilege
+		rec := get("/api/diff", q("path", "up/secret.txt", "untracked", "1"))
+		if rec.Code != http.StatusNotFound || strings.Contains(rec.Body.String(), "TOPSECRET") {
+			t.Errorf("untracked diff through a symlinked folder: got %d %q, want 404 without the secret", rec.Code, rec.Body.String())
+		}
+	}
 	expect("bad hash", get("/api/commit", q("hash", "HEAD")), http.StatusBadRequest, "bad commit")
 	expect("bad rev", get("/api/file", q("path", "a.txt", "rev", "--output=/tmp/x")), http.StatusBadRequest, "bad ref")
 	expect("checkout without JSON", do("POST", "/api/checkout?"+q().Encode(), "text/plain", "branch=main"), http.StatusUnsupportedMediaType, "")
