@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -59,7 +58,7 @@ func ignored(repo string, names []string) ([]string, error) {
 	for _, e := range strings.Split(string(out), "\x00") {
 		dir := strings.HasSuffix(e, "/")
 		e = strings.TrimSuffix(e, "/")
-		if e == "" || skip(path.Base(e)) || len(list) >= maxIgnored {
+		if e == "" || slices.ContainsFunc(strings.Split(e, "/"), skip) || len(list) >= maxIgnored {
 			continue
 		}
 		if !dir {

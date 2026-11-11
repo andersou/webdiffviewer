@@ -31,14 +31,17 @@ func newRepo(t *testing.T) string {
 	run("init", "-q", "-b", "main")
 	write("a.txt", "one\n")
 	write("b.txt", "bee\n")
+	os.MkdirAll(filepath.Join(dir, ".idea"), 0o755) // a hidden folder with a tracked file and an ignored one
+	write(".idea/tracked.xml", "<x/>")
 	run("add", ".")
 	run("commit", "-q", "-m", "init")
 	write("a.txt", "one\ntwo\n")
 	write("b.txt", "BEE\n")
 	run("add", "b.txt")
 	write("new.txt", "new\n")
-	write(".gitignore", ".env\nout/\nnode_modules/\n")
+	write(".gitignore", ".env\nout/\nnode_modules/\nworkspace.xml\n")
 	write(".env", "SECRET=hunter2\n")
+	write(".idea/workspace.xml", "<x/>")
 	// ignored folders: out/ is listed in the Explorer, node_modules is not
 	for _, d := range []string{"out/clips", "node_modules/x"} {
 		os.MkdirAll(filepath.Join(dir, d), 0o755)
@@ -116,7 +119,7 @@ func TestAPI(t *testing.T) {
 	expect("files", get("/api/files", q()), http.StatusOK, "new.txt")
 	var list struct{ Files, Ignored []string }
 	json.Unmarshal(get("/api/files", q()).Body.Bytes(), &list)
-	if strings.Join(list.Ignored, ",") != "out/clips/01.mp4" { // not .env (hidden) nor node_modules
+	if strings.Join(list.Ignored, ",") != "out/clips/01.mp4" { // not .env, .idea/workspace.xml (hidden) nor node_modules
 		t.Errorf("ignored files: got %v, want [out/clips/01.mp4]", list.Ignored)
 	}
 	expect("diff", get("/api/diff", q("path", "a.txt")), http.StatusOK, "+two")
