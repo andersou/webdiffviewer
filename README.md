@@ -71,7 +71,7 @@ tar -xzf webdiffviewer-*-darwin-arm64.tar.gz && ./webdiffviewer -version
 
 ### Build from source
 
-Requires Go 1.24+, Node 20+ and git.
+Requires Go 1.24+, Node 22.12+ and git.
 
 ```sh
 git clone https://github.com/andersou/webdiffviewer.git
