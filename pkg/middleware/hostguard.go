@@ -19,7 +19,7 @@ func HostGuard(allowed []string, h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		host, _, err := net.SplitHostPort(r.Host)
 		if err != nil {
-			host = r.Host
+			host = strings.Trim(r.Host, "[]") // no port: [::1] on port 80
 		}
 		if !ok[strings.ToLower(host)] && net.ParseIP(host) == nil {
 			http.Error(w, "forbidden host", http.StatusForbidden)

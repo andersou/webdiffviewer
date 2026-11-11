@@ -242,7 +242,7 @@ func TestAPI(t *testing.T) {
 	expect("blame untracked", get("/api/blame", q("path", "new.txt")), http.StatusNotFound, "cannot blame")
 
 	// Host header: IP addresses, localhost and --allowed-hosts pass; other names (DNS rebinding) don't
-	for host, status := range map[string]int{"192.168.1.10:8080": http.StatusOK, "localhost:8080": http.StatusOK, "[::1]:8080": http.StatusOK, "MAC.local:8080": http.StatusOK, "evil.example:8080": http.StatusForbidden} {
+	for host, status := range map[string]int{"192.168.1.10:8080": http.StatusOK, "localhost:8080": http.StatusOK, "[::1]:8080": http.StatusOK, "[::1]": http.StatusOK, "MAC.local:8080": http.StatusOK, "evil.example:8080": http.StatusForbidden} {
 		req := httptest.NewRequest("GET", "/api/config", nil)
 		req.Host = host
 		rec := httptest.NewRecorder()
