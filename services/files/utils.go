@@ -49,8 +49,8 @@ func read(repo, path, rev string, hideIgnored bool) ([]byte, error) {
 	return buf, nil
 }
 
-// notCommitted is the id git blame gives lines that only exist in the working tree.
-const notCommitted = "0000000000000000000000000000000000000000"
+// notCommitted reports the all-zero id git blame gives lines that only exist in the working tree (40 or 64 zeros).
+func notCommitted(id string) bool { return id != "" && strings.Trim(id, "0") == "" }
 
 // parseBlame reads `git blame --porcelain`: per line a "<sha> <orig> <final> [<count>]" header,
 // the commit's fields the first time that commit appears, then the line itself after a tab.
@@ -60,18 +60,18 @@ func parseBlame(out string) BlameResult {
 	for _, l := range strings.Split(out, "\n") {
 		if text, ok := strings.CutPrefix(l, "\t"); ok {
 			sha := cur
-			if sha == notCommitted {
+			if notCommitted(sha) {
 				sha = ""
 			}
 			b.Lines = append(b.Lines, BlameLine{Commit: sha, Text: text})
 			continue
 		}
 		k, v, _ := strings.Cut(l, " ")
-		if len(k) == 40 && git.IsHash(k) {
+		if (len(k) == 40 || len(k) == 64) && git.IsHash(k) {
 			cur = k
 			continue
 		}
-		if cur == notCommitted {
+		if notCommitted(cur) {
 			continue
 		}
 		c := b.Commits[cur]
