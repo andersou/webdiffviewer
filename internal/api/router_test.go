@@ -106,8 +106,9 @@ func TestAPI(t *testing.T) {
 	// app URLs keep their state in the query, so they all serve the frontend
 	expect("app url", get("/", url.Values{"repo": {"../x"}, "diff": {"a.txt"}}), http.StatusOK, "<html>")
 
-	// before /api/repos lists it, the repo is off limits
-	expect("unlisted repo", get("/api/status", q()), http.StatusForbidden, "unknown repo")
+	// a folder /api/repos would not list is off limits
+	expect("unlisted repo", get("/api/status", url.Values{"repo": {filepath.Dir(repo)}}), http.StatusForbidden, "unknown repo")
+	expect("repo before /api/repos", get("/api/status", q()), http.StatusOK, "a.txt")
 	expect("repos", get("/api/repos", nil), http.StatusOK, `"branch":"main"`)
 
 	var status []map[string]string
