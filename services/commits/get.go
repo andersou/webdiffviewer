@@ -3,7 +3,6 @@ package commits
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/andersou/webdiffviewer/internal/git"
 	"github.com/andersou/webdiffviewer/pkg/apperr"
@@ -22,12 +21,12 @@ func Log(repo string, skip int, all bool, ref string) ([]git.Commit, error) {
 		}
 		head = h
 	}
-	args := []string{"log", "--topo-order", "-n", fmt.Sprint(pageSize), "--skip", fmt.Sprint(max(skip, 0)), "--format=" + git.LogFormat}
+	args := []string{"log", "--topo-order", "-n", fmt.Sprint(pageSize), "--skip", fmt.Sprint(max(skip, 0)), "--format=" + git.LogFormat, "--ignore-missing"} // unborn HEAD (no commits yet): no error
 	if all {
 		args = append(args, "--branches", "--remotes", "--tags")
 	}
 	out, err := git.Run(repo, append(args, head, "--")...)
-	if err != nil && !strings.Contains(err.Error(), "does not have any commits") {
+	if err != nil {
 		return nil, err
 	}
 	list := git.ParseLog(string(out))
