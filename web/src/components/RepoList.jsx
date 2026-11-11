@@ -30,6 +30,13 @@ const iconBtn = css({
   _hover: { bg: 'ui.hover', color: 'ui.fg' },
   mdDown: { w: '36px', h: '36px', my: '-12px', mr: '-12px' },
 })
+// a refresh rarely changes what is on screen, so the icon turns once (fades, for less motion) to show the click was taken
+// shortcut: one fixed 500ms turn, not until the reload ends; tie it to the resources' loading if refreshes get slow
+const spin = (svg) =>
+  svg.animate(matchMedia('(prefers-reduced-motion: reduce)').matches ? { opacity: [0.3, 1] } : { transform: ['rotate(0turn)', 'rotate(1turn)'] }, {
+    duration: 500,
+    easing: 'ease-out',
+  })
 
 // RepoList shows the open folder (with the --parent-dir picker button), its repos and their worktrees.
 export default function RepoList(props) {
@@ -44,7 +51,7 @@ export default function RepoList(props) {
       <section class={section}>
         <h2 class={heading}>
           Repositories
-          <button class={iconBtn} title="Refresh" aria-label="Refresh" onClick={props.onRefresh}>
+          <button class={iconBtn} title="Refresh" aria-label="Refresh" onClick={(e) => (spin(e.currentTarget.querySelector('svg')), props.onRefresh())}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M21 12a9 9 0 1 1-3-6.7L21 8" />
               <path d="M21 3v5h-5" />
