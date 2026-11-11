@@ -23,10 +23,12 @@ func Repo(ws *workspace.Workspace, r *http.Request) (string, error) {
 	return repo, nil
 }
 
-// inGitDir reports whether any segment of p is .git (any case: macOS and Windows ignore it).
+// inGitDir reports whether any segment of p is .git (any case: macOS and Windows ignore it),
+// or a name Windows also opens it by (trailing dots/spaces, 8.3 GIT~1), as in git's is_ntfs_dotgit.
 func inGitDir(p string) bool {
 	for _, seg := range strings.Split(filepath.ToSlash(p), "/") {
-		if strings.EqualFold(seg, ".git") {
+		seg = strings.TrimRight(seg, ". ")
+		if strings.EqualFold(seg, ".git") || strings.EqualFold(seg, "git~1") {
 			return true
 		}
 	}

@@ -153,6 +153,8 @@ func TestAPI(t *testing.T) {
 	expect(".git via file", get("/api/file", q("path", ".git/config")), http.StatusBadRequest, "bad path")
 	expect(".git via raw", get("/api/raw", q("path", ".git/config")), http.StatusBadRequest, "bad path")
 	expect(".GIT any case", get("/api/file", q("path", "sub/.GIT/config")), http.StatusBadRequest, "bad path")
+	expect(".git by its 8.3 name", get("/api/file", q("path", "GIT~1/config")), http.StatusBadRequest, "bad path")
+	expect(".git with a trailing dot", get("/api/file", q("path", ".git./config")), http.StatusBadRequest, "bad path")
 	// gitignored files are served by default...
 	expect("ignored file, default", get("/api/file", q("path", ".env")), http.StatusOK, "hunter2")
 	// ...and hidden with --check-ignore
